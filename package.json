@@ -1,0 +1,39 @@
+{
+  "name": "OneDep",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter ./apps/web dev",
+    "dev:api": "pnpm --filter ./apps/api start:dev",
+    "build:web": "pnpm --filter ./apps/web build",
+    "build:api": "pnpm --filter ./apps/api build",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:cov": "pnpm --filter api test:cov",
+    "lint": "pnpm -r lint",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "prepare": "husky"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.9.1",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.9.1",
+  "type": "module",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0"
+  },
+  "lint-staged": {
+    "apps/api/{src,test}/**/*.ts": "pnpm --filter api exec oxlint --type-aware",
+    "apps/web/**/*.{ts,tsx,vue}": [
+      "pnpm --filter web exec oxlint",
+      "pnpm --filter web exec eslint"
+    ]
+  }
+}
