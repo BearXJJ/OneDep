@@ -1,9 +1,10 @@
 FROM node:22.23.3-bookworm-slim AS build
 
 WORKDIR /app
-RUN corepack enable
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm install --global pnpm@12.9.1 --registry="$NPM_REGISTRY"
 COPY . .
-RUN HUSKY=0 DATABASE_URL=postgresql://unused:unused@localhost:5432/unused pnpm install --frozen-lockfile
+RUN HUSKY=0 DATABASE_URL=postgresql://unused:unused@localhost:5432/unused pnpm install --frozen-lockfile --registry="$NPM_REGISTRY"
 RUN pnpm build
 
 FROM build AS api
