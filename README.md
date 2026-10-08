@@ -1,10 +1,10 @@
 # OneDep
 
-`apps/web` 是 Vue 3 + Vite 前端，`apps/api` 是 NestJS API；本地 PostgreSQL 和 Redis 由 Docker Compose 提供。`packages/shared` 预留给前后端真正共用的代码。
+`apps/web` 是 Vue 3 + Vite 前端，`apps/api` 是 NestJS API；本地 PostgreSQL 和 Redis 由 Docker Compose 提供。`packages/shared` 提供前后端共用的消息类型。
 
 ## 技术架构
 
-项目使用 pnpm workspace 管理两个应用和一个预留的共享包。前后端分别运行；Docker Compose 在本地提供数据服务。
+项目使用 pnpm workspace 管理两个应用和一个共享包。前后端分别运行；Docker Compose 在本地提供数据服务。
 
 ```mermaid
 flowchart LR
@@ -14,6 +14,8 @@ flowchart LR
     Prisma --> Postgres[(PostgreSQL)]
     API --> RedisClient[ioredis]
     RedisClient --> Redis[(Redis)]
+    Shared[共享消息类型] -.-> Web
+    Shared -.-> API
 ```
 
 版本以 `.nvmrc`、`package.json`、`pnpm-lock.yaml` 和 Docker Compose 镜像标签为准。
@@ -53,6 +55,10 @@ pnpm dev:web
 
 前端地址以 Vite 输出为准，默认是 http://localhost:5173；API 默认是 http://localhost:3000/api，健康检查是 http://localhost:3000/api/health。前端开发服务器会将 `/api` 请求代理到 API。
 
+## 联通演示
+
+打开前端首页，输入一条留言并保存。`POST /api/messages` 将留言写入 PostgreSQL，同时清除 Redis 中的列表缓存。页面随后调用 `GET /api/messages` 读取最近 10 条留言：首次从 PostgreSQL 读取并缓存 60 秒，再点“刷新列表”会从 Redis 读取。页面会显示本次读取的数据来源。
+
 ## 检查
 
 ```bash
@@ -70,7 +76,7 @@ pnpm --filter api test:e2e
 - `apps/api/prisma/schema.prisma`：数据库模型；迁移提交在 `apps/api/prisma/migrations`。
 - `apps/api/.env.example`：本地环境变量示例；复制后的 `.env` 不提交到 Git。
 - `apps/web/src/views` 和 `apps/web/src/router`：页面与路由。
-- `packages/shared`：目前为空；出现实际共用代码后再放入。
+- `packages/shared`：前后端共用的留言接口类型。
 
 Docker Compose 中的数据库口令仅供本地开发。
 部署时单独提供环境变量、数据库和 Redis，并执行迁移。

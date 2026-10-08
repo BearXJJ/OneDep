@@ -1,0 +1,11 @@
+.git
+.agents
+.codex
+.aws
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/*.tsbuildinfo
+apps/api/src/generated/prisma

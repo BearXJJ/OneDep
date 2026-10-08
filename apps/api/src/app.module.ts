@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { DatabaseModule } from './database/database.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { HealthModule } from './health/health.module.js';
+import { MessagesModule } from './messages/messages.module.js';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HealthModule } from './health/health.module.js';
     DatabaseModule,
     RedisModule,
     HealthModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
