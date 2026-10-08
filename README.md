@@ -79,4 +79,20 @@ pnpm --filter api test:e2e
 - `packages/shared`：前后端共用的留言接口类型。
 
 Docker Compose 中的数据库口令仅供本地开发。
-部署时单独提供环境变量、数据库和 Redis，并执行迁移。
+
+## 生产部署
+
+推送到 `main` 后，GitHub Actions 会为 `linux/amd64` 构建 API 和 Web 镜像，并发布到 GitHub Container Registry。生产 Compose 使用 `ghcr.io/bearxjj/onedep-api:main` 和 `ghcr.io/bearxjj/onedep-web:main`；数据库迁移复用 API 镜像，服务器不参与构建。
+
+首次发布后，确认两个容器包允许服务器拉取：公开包可以直接拉取，私有包需要先在服务器登录 GHCR。生产数据库密码保存在服务器的 `.env.production`，不要提交到 Git。
+
+在服务器更新代码中的 Compose 文件后，拉取并启动服务：
+
+```bash
+cd /opt/onedep
+docker compose --env-file .env.production -f compose.production.yml pull
+docker compose --env-file .env.production -f compose.production.yml up -d
+docker compose --env-file .env.production -f compose.production.yml ps
+```
+
+PostgreSQL 和 Redis 的数据分别保存在 Compose 卷中。Web 只监听服务器本机的 `127.0.0.1:8080`，由 1Panel 网站反向代理并配置 HTTPS。
