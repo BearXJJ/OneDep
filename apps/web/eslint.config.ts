@@ -5,10 +5,10 @@ import pluginVitest from '@vitest/eslint-plugin'
 import pluginOxlint from 'eslint-plugin-oxlint'
 import skipFormatting from 'eslint-config-prettier/flat'
 
-// To allow more languages other than `ts` in `.vue` files, uncomment the following lines:
+// 如需在 .vue 文件中使用 ts 以外的脚本语言，取消下面两行的注释：
 // import { configureVueProject } from '@vue/eslint-config-typescript'
 // configureVueProject({ scriptLangs: ['ts', 'tsx'] })
-// More info at https://github.com/vuejs/eslint-config-typescript/#advanced-setup
+// 详细说明：https://github.com/vuejs/eslint-config-typescript/#advanced-setup
 
 export default defineConfigWithVueTs(
   {

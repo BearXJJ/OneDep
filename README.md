@@ -1,6 +1,6 @@
 # OneDep
 
-`apps/web` 是 Vue 3 + Vite 前端，`apps/api` 是 NestJS API；本地 PostgreSQL 和 Redis 由 Docker Compose 提供。`packages/shared` 提供前后端共用的消息类型。
+`apps/web` 是 Vue 3 + Vite 前端，`apps/api` 是 NestJS API；本地 PostgreSQL 和 Redis 由 Docker Compose 提供。`packages/shared` 提供前后端共用的用户类型。
 
 ## 技术架构
 
@@ -14,7 +14,7 @@ flowchart LR
     Prisma --> Postgres[(PostgreSQL)]
     API --> RedisClient[ioredis]
     RedisClient --> Redis[(Redis)]
-    Shared[共享消息类型] -.-> Web
+    Shared[共享用户类型] -.-> Web
     Shared -.-> API
 ```
 
@@ -25,6 +25,7 @@ flowchart LR
 | 运行环境 | Node.js / pnpm | 22.23.3 / 12.9.1 |
 | 前端 | Vue / Vue Router / Pinia | 3.5.43 / 5.3.1 / 4.0.3 |
 | 前端构建 | Vite | 8.3.3 |
+| 前端样式 | Less | 4.9.1 |
 | API | NestJS (`@nestjs/core`) | 12.1.2 |
 | 数据访问 | Prisma Client / PostgreSQL 适配器 | 7.10.0 / 7.10.0 |
 | Redis 客户端 | ioredis | 6.0.0 |
@@ -37,27 +38,40 @@ flowchart LR
 
 需要 nvm、Docker 和 Docker Compose。项目使用 Node 22.23.3、pnpm 12.9.1。
 
+首次运行，在项目根目录执行：
+
 ```bash
 nvm use
 corepack enable
+[ -f apps/api/.env ] || cp apps/api/.env.example apps/api/.env
 pnpm install
-cp apps/api/.env.example apps/api/.env
-pnpm docker:up
-pnpm --filter api exec prisma migrate deploy
+pnpm dev
 ```
 
-`pnpm install` 会生成 Prisma Client。之后分别在两个终端运行：
+以后只需在项目根目录运行 `pnpm dev`。它会启动 PostgreSQL 和 Redis、等待健康检查、执行数据库迁移，然后在当前终端同时运行 API 和前端。按 `Ctrl+C` 停止 API 和前端；数据库容器仍会运行，需要停止时执行 `pnpm docker:down`。
 
-```bash
-pnpm dev:api
-pnpm dev:web
-```
+`pnpm install` 会生成 Prisma Client。首次迁移会删除旧 `Message` 表及其数据，若需保留请先备份。
 
 前端地址以 Vite 输出为准，默认是 http://localhost:5173；API 默认是 http://localhost:3000/api，健康检查是 http://localhost:3000/api/health。前端开发服务器会将 `/api` 请求代理到 API。
 
-## 联通演示
+## 注册与登录
 
-打开前端首页，输入一条留言并保存。`POST /api/messages` 将留言写入 PostgreSQL，同时清除 Redis 中的列表缓存。页面随后调用 `GET /api/messages` 读取最近 10 条留言：首次从 PostgreSQL 读取并缓存 60 秒，再点“刷新列表”会从 Redis 读取。页面会显示本次读取的数据来源。
+访问 `/register` 注册提交员或审校员。注册成功后自动登录；已有账号可访问 `/login`。密码至少 8 个字符，服务器只保存 scrypt 哈希。登录会话保存在 Redis，浏览器使用 HttpOnly Cookie；`GET /api/auth/me` 恢复登录状态，`POST /api/auth/logout` 退出。管理员可登录，但注册接口拒绝管理员身份。
+
+管理员账号只能从服务器命令行创建。先完成数据库迁移和 API 构建，再在 `apps/api` 工作目录设置 `DATABASE_URL`、`ADMIN_EMAIL` 和 `ADMIN_PASSWORD`，运行 `pnpm admin:create`。邮箱不能与现有账号重复。生产环境可在服务器执行：
+
+```bash
+cd /opt/onedep
+read -r -p '管理员邮箱: ' ADMIN_EMAIL
+read -r -s -p '管理员密码（至少 8 个字符）: ' ADMIN_PASSWORD
+printf '\n'
+export ADMIN_EMAIL ADMIN_PASSWORD
+docker compose --env-file .env.production -f compose.production.yml \
+  exec -e ADMIN_EMAIL -e ADMIN_PASSWORD api node dist/create-admin.js
+unset ADMIN_EMAIL ADMIN_PASSWORD
+```
+
+密码不会写入命令历史。这个命令只用于首次创建管理员；若邮箱已存在会报错，不会提升已有账号权限。[Docker Compose 的 `exec -e` 参数说明](https://docs.docker.com/reference/cli/docker/compose/exec/)。
 
 ## 检查
 
@@ -65,18 +79,16 @@ pnpm dev:web
 pnpm build
 pnpm lint
 pnpm test
-pnpm --filter api test:e2e
 ```
 
-端到端测试需要先启动 PostgreSQL 和 Redis，并应用数据库迁移。
-`pnpm test:cov` 目前只统计 API 覆盖率。
+认证测试使用内存中的 PostgreSQL/Redis 替身，不会连接真实服务。`pnpm test:cov` 目前只统计 API 覆盖率。
 
 ## 目录与配置
 
 - `apps/api/prisma/schema.prisma`：数据库模型；迁移提交在 `apps/api/prisma/migrations`。
 - `apps/api/.env.example`：本地环境变量示例；复制后的 `.env` 不提交到 Git。
 - `apps/web/src/views` 和 `apps/web/src/router`：页面与路由。
-- `packages/shared`：前后端共用的留言接口类型。
+- `packages/shared`：前后端共用的用户与角色类型。
 
 Docker Compose 中的数据库口令仅供本地开发。
 
@@ -96,3 +108,5 @@ docker compose --env-file .env.production -f compose.production.yml ps
 ```
 
 PostgreSQL 和 Redis 的数据分别保存在 Compose 卷中。Web 只监听服务器本机的 `127.0.0.1:8080`，由 1Panel 网站反向代理并配置 HTTPS。
+
+这次认证迁移会删除旧 `Message` 表及其留言数据。生产更新前先备份 PostgreSQL，再拉取新镜像并运行迁移。

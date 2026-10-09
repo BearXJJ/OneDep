@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 import { DatabaseModule } from './database/database.module.js';
 import { RedisModule } from './redis/redis.module.js';
 import { HealthModule } from './health/health.module.js';
-import { MessagesModule } from './messages/messages.module.js';
+import { AuthModule } from './auth/auth.module.js';
 
 @Module({
   imports: [
@@ -16,9 +14,7 @@ import { MessagesModule } from './messages/messages.module.js';
     DatabaseModule,
     RedisModule,
     HealthModule,
-    MessagesModule,
+    AuthModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

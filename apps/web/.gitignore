@@ -1,4 +1,4 @@
-# Logs
+# 日志
 logs
 *.log
 npm-debug.log*
@@ -14,7 +14,7 @@ dist-ssr
 coverage
 *.local
 
-# Editor directories and files
+# 编辑器目录和文件
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -28,12 +28,12 @@ coverage
 
 .eslintcache
 
-# Cypress
+# Cypress 测试产物
 /cypress/videos/
 /cypress/screenshots/
 
-# Vitest
+# Vitest 测试产物
 __screenshots__/
 
-# Vite
+# Vite 临时文件
 *.timestamp-*-*.mjs

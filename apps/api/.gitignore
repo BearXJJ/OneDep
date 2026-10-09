@@ -1,10 +1,10 @@
 node_modules
-# Keep environment variables out of version control
+# 不将环境变量文件纳入版本控制
 .env
 
 /src/generated/prisma
 
-# Local Prisma assistant skills
+# 本地 Prisma 助手技能文件
 /.agents/
 /.claude/
 /.windsurf/
