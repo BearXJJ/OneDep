@@ -9,15 +9,20 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   Res,
   Cookies,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { IS_PRODUCTION, SESSION_COOKIE_NAME } from './auth.constants.js';
 import { AuthService, SESSION_SECONDS } from './auth.service.js';
-
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const COOKIE_NAME = IS_PRODUCTION ? '__Host-onedep_session' : 'onedep_session';
+import {
+  type AuthenticatedRequest,
+  Roles,
+  SessionGuard,
+} from './session.guard.js';
 
 @Controller('auth')
 export class AuthController {
@@ -26,7 +31,7 @@ export class AuthController {
   @Post('register')
   async register(
     @Body() body: unknown,
-    @Cookies(COOKIE_NAME) previousToken: string | undefined,
+    @Cookies(SESSION_COOKIE_NAME) previousToken: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     const user = await this.auth.register(body);
@@ -39,7 +44,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() body: unknown,
-    @Cookies(COOKIE_NAME) previousToken: string | undefined,
+    @Cookies(SESSION_COOKIE_NAME) previousToken: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     const user = await this.auth.login(body);
@@ -48,69 +53,72 @@ export class AuthController {
     return user;
   }
 
+  @UseGuards(SessionGuard)
   @Get('me')
   me(
-    @Cookies(COOKIE_NAME) token: string | undefined,
+    @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
     response.setHeader('Cache-Control', 'no-store');
-    return this.auth.currentUser(token);
+    return request.authUser;
   }
 
+  @Roles('ADMIN')
+  @UseGuards(SessionGuard)
   @Get('users')
-  users(
-    @Cookies(COOKIE_NAME) token: string | undefined,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  users(@Res({ passthrough: true }) response: Response) {
     response.setHeader('Cache-Control', 'no-store');
-    return this.auth.listUsers(token);
+    return this.auth.listUsers();
   }
 
+  @Roles('ADMIN')
+  @UseGuards(SessionGuard)
   @Post('users')
   createUser(
     @Body() body: unknown,
-    @Cookies(COOKIE_NAME) token: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     response.setHeader('Cache-Control', 'no-store');
-    return this.auth.createUser(token, body);
+    return this.auth.createUser(body);
   }
 
+  @Roles('ADMIN')
+  @UseGuards(SessionGuard)
   @Patch('users/:id')
   updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: unknown,
-    @Cookies(COOKIE_NAME) token: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     response.setHeader('Cache-Control', 'no-store');
-    return this.auth.updateUser(token, id, body);
+    return this.auth.updateUser(id, body);
   }
 
+  @Roles('ADMIN')
+  @UseGuards(SessionGuard)
   @Delete('users/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeUser(
     @Param('id', ParseIntPipe) id: number,
-    @Cookies(COOKIE_NAME) token: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     response.setHeader('Cache-Control', 'no-store');
-    return this.auth.removeUser(token, id);
+    return this.auth.removeUser(id);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
-    @Cookies(COOKIE_NAME) token: string | undefined,
+    @Cookies(SESSION_COOKIE_NAME) token: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ) {
     await this.auth.deleteSession(token);
-    response.clearCookie(COOKIE_NAME, { path: '/' });
+    response.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
     response.setHeader('Cache-Control', 'no-store');
   }
 
   private setSessionCookie(response: Response, token: string): void {
-    response.cookie(COOKIE_NAME, token, {
+    response.cookie(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: IS_PRODUCTION,
       sameSite: 'lax',

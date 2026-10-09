@@ -8,6 +8,7 @@ import { RedisService } from '../redis/redis.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { hashPassword } from './password.js';
+import { SessionGuard } from './session.guard.js';
 
 describe('authentication HTTP flow', () => {
   let app: INestApplication<App>;
@@ -61,7 +62,8 @@ describe('authentication HTTP flow', () => {
           const user = users.find(
             (entry) => entry.id === where.id && entry.role === where.role,
           );
-          if (!user) throw Object.assign(new Error('not found'), { code: 'P2025' });
+          if (!user)
+            throw Object.assign(new Error('not found'), { code: 'P2025' });
           user.role = data.role;
           return { ...user, createdAt: new Date('2026-10-09T00:00:00.000Z') };
         },
@@ -73,7 +75,8 @@ describe('authentication HTTP flow', () => {
           const index = users.findIndex(
             (entry) => entry.id === where.id && entry.role === where.role,
           );
-          if (index < 0) throw Object.assign(new Error('not found'), { code: 'P2025' });
+          if (index < 0)
+            throw Object.assign(new Error('not found'), { code: 'P2025' });
           return users.splice(index, 1)[0];
         },
       },
@@ -99,6 +102,7 @@ describe('authentication HTTP flow', () => {
       controllers: [AuthController],
       providers: [
         AuthService,
+        SessionGuard,
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: redis },
       ],
@@ -247,14 +251,19 @@ describe('authentication HTTP flow', () => {
   it('lets only administrators add, change roles, and delete public accounts', async () => {
     const adminLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'operator@example.com', password: 'operator secure password' })
+      .send({
+        email: 'operator@example.com',
+        password: 'operator secure password',
+      })
       .expect(200);
     const adminCookie = (adminLogin.headers['set-cookie'] as string[])[0]!;
     const submitterLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: 'alice@example.com', password: 'passw0rd' })
       .expect(200);
-    const submitterCookie = (submitterLogin.headers['set-cookie'] as string[])[0]!;
+    const submitterCookie = (
+      submitterLogin.headers['set-cookie'] as string[]
+    )[0]!;
     const newUser = {
       name: 'Chen',
       email: 'chen@example.com',
@@ -282,7 +291,10 @@ describe('authentication HTTP flow', () => {
       .set('Cookie', adminCookie)
       .send(newUser)
       .expect(201);
-    expect(created.body).toMatchObject({ email: 'chen@example.com', role: 'SUBMITTER' });
+    expect(created.body).toMatchObject({
+      email: 'chen@example.com',
+      role: 'SUBMITTER',
+    });
     expect(created.body).not.toHaveProperty('passwordHash');
 
     await request(app.getHttpServer())

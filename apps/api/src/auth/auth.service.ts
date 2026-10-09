@@ -176,30 +176,28 @@ export class AuthService {
     return publicUser(user);
   }
 
-  // 仅向管理员返回用户资料，明确排除密码哈希。
-  async listUsers(token?: string): Promise<AdminUser[]> {
-    await this.requireAdmin(token);
-
+  // 返回用户资料并明确排除密码哈希，访问权限由 Guard 统一控制。
+  async listUsers(): Promise<AdminUser[]> {
     const users = await this.prisma.user.findMany({
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
     return users.map(adminUser);
   }
 
-  // 管理员沿用公开注册规则新增账户，不替新用户建立登录会话。
-  async createUser(token: string | undefined, input: unknown): Promise<AuthUser> {
-    await this.requireAdmin(token);
+  // 沿用公开注册规则新增账户，不替新用户建立登录会话。
+  async createUser(input: unknown): Promise<AuthUser> {
     return this.register(input);
   }
 
   // 管理员只能在提交员和审校员之间切换角色。
-  async updateUser(
-    token: string | undefined,
-    userId: number,
-    input: unknown,
-  ): Promise<AdminUser> {
-    await this.requireAdmin(token);
+  async updateUser(userId: number, input: unknown): Promise<AdminUser> {
     if (!Number.isSafeInteger(userId) || userId < 1) {
       throw new BadRequestException('用户编号无效');
     }
@@ -229,7 +227,13 @@ export class AuthService {
       const user = await this.prisma.user.update({
         where: { id: userId, role: target.role },
         data: { role },
-        select: { id: true, email: true, name: true, role: true, createdAt: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+        },
       });
       return adminUser(user);
     } catch (error) {
@@ -241,8 +245,7 @@ export class AuthService {
   }
 
   // 删除普通账户后，其旧会话会因找不到用户而失效。
-  async removeUser(token: string | undefined, userId: number): Promise<void> {
-    await this.requireAdmin(token);
+  async removeUser(userId: number): Promise<void> {
     if (!Number.isSafeInteger(userId) || userId < 1) {
       throw new BadRequestException('用户编号无效');
     }
@@ -257,7 +260,9 @@ export class AuthService {
     }
 
     try {
-      await this.prisma.user.delete({ where: { id: userId, role: target.role } });
+      await this.prisma.user.delete({
+        where: { id: userId, role: target.role },
+      });
     } catch (error) {
       if ((error as { code?: string }).code === 'P2025') {
         throw new ConflictException('用户信息已变化，请刷新后重试');
@@ -268,12 +273,5 @@ export class AuthService {
 
   async deleteSession(token?: string): Promise<void> {
     if (token) await this.redis.client.del(sessionKey(token));
-  }
-
-  private async requireAdmin(token?: string): Promise<void> {
-    const actor = await this.currentUser(token);
-    if (actor.role !== 'ADMIN') {
-      throw new ForbiddenException('仅管理员可以管理用户');
-    }
   }
 }
