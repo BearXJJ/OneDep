@@ -6,7 +6,7 @@
       </div>
       <div class="topbar-main">
         <button
-          v-if="isSubmitter && submitterEditing"
+          v-if="isSubmitter && submitterEditing && !isSettings"
           type="button"
           class="topbar-back"
           @click="returnToDepositionList"
@@ -56,11 +56,25 @@
             </svg>
             <span>{{ navigationLabel }}</span>
           </RouterLink>
+          <RouterLink class="nav-link settings-link" to="/settings">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
+              <path
+                d="M4.5 16c.3-2.8 2.4-4.5 5.5-4.5s5.2 1.7 5.5 4.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>个人设置</span>
+          </RouterLink>
         </nav>
       </aside>
 
       <section class="workspace">
-        <AdminUsersPanel v-if="isAdmin" />
+        <ProfileSettings v-if="isSettings" />
+
+        <AdminUsersPanel v-else-if="isAdmin" />
 
         <SubmitterWorkspace
           v-else-if="isSubmitter"
@@ -68,8 +82,7 @@
           @view-change="submitterEditing = $event"
         />
 
-        <div v-else class="work-items" aria-labelledby="workspace-title">
-          <h1 id="workspace-title">审校任务</h1>
+        <div v-else class="work-items" aria-label="审校任务">
           <div class="empty-state">
             <span class="empty-icon" aria-hidden="true">
               <svg viewBox="0 0 48 48" fill="none">
@@ -101,9 +114,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { UserRole } from '@onedep/shared'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import AdminUsersPanel from '@/components/AdminUsersPanel.vue'
+import ProfileSettings from '@/components/ProfileSettings.vue'
 import SubmitterWorkspace from '@/components/SubmitterWorkspace.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -114,6 +128,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 }
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const leaving = ref(false)
 const error = ref('')
@@ -121,8 +136,10 @@ const submitterEditing = ref(false)
 const submitterWorkspace = ref<{ closeDraft: () => Promise<void> } | null>(null)
 const isAdmin = computed(() => auth.user?.role === 'ADMIN')
 const isSubmitter = computed(() => auth.user?.role === 'SUBMITTER')
+const isSettings = computed(() => route.name === 'settings')
 const roleLabel = computed(() => ROLE_LABELS[auth.user?.role ?? 'SUBMITTER'])
 const areaName = computed(() => {
+  if (isSettings.value) return '个人设置'
   if (isAdmin.value) return '管理后台'
   return isSubmitter.value ? '我的投递' : '审校任务'
 })
@@ -195,9 +212,10 @@ async function logout() {
       background: #fff;
 
       .area-name {
-        color: #758078;
-        font-size: 13px;
-        font-weight: 550;
+        color: #2c3931;
+        font-size: 16px;
+        font-weight: 620;
+        letter-spacing: -0.02em;
       }
 
       .topbar-back {
@@ -293,6 +311,11 @@ async function logout() {
       background: #17231d;
 
       nav {
+        display: flex;
+        height: 100%;
+        flex-direction: column;
+        gap: 6px;
+
         .nav-link {
           display: flex;
           min-height: 42px;
@@ -301,16 +324,25 @@ async function logout() {
           padding: 0 13px;
           border-radius: 8px;
           color: #f3f6f4;
-          background: #27382f;
+          background: transparent;
           font-size: 14px;
           font-weight: 560;
           text-decoration: none;
+
+          &:hover,
+          &.router-link-exact-active {
+            background: #27382f;
+          }
 
           svg {
             width: 18px;
             height: 18px;
             color: #a9bbaf;
           }
+        }
+
+        .settings-link {
+          margin-top: auto;
         }
       }
     }
@@ -320,14 +352,6 @@ async function logout() {
       padding: 40px clamp(28px, 4vw, 64px) 56px;
 
       .work-items {
-        h1 {
-          margin: 0 0 24px;
-          color: #17231d;
-          font-size: 24px;
-          font-weight: 650;
-          letter-spacing: -0.04em;
-        }
-
         .empty-state {
           display: flex;
           min-height: 260px;

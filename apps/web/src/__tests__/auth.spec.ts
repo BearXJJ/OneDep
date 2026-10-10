@@ -5,11 +5,14 @@ import type { AdminUser, DepositionDetail } from '@onedep/shared'
 
 import App from '../App.vue'
 import DepositionMethodSelector from '../components/DepositionMethodSelector.vue'
+import ProfileSettings from '../components/ProfileSettings.vue'
 import router from '../router'
 import { useAuthStore } from '../stores/auth'
 import DashboardView from '../views/DashboardView.vue'
 
 afterEach(() => vi.unstubAllGlobals())
+
+const emptyProfile = { orcid: '', institution: '', country: '' }
 
 const depositionFixture: DepositionDetail = {
   id: 1,
@@ -67,7 +70,13 @@ const depositionFixture: DepositionDetail = {
 }
 
 it('shows only public roles and opens the workspace after registration', async () => {
-  const user = { id: 1, email: 'alice@example.com', name: 'Alice', role: 'SUBMITTER' }
+  const user = {
+    id: 1,
+    email: 'alice@example.com',
+    name: 'Alice',
+    ...emptyProfile,
+    role: 'SUBMITTER',
+  }
   vi.stubGlobal('scrollTo', vi.fn<() => void>())
   const fetchMock = vi.fn<(path: string) => Promise<unknown>>(async (path: string) => {
     if (path === '/api/auth/me') {
@@ -120,7 +129,13 @@ it('shows the reviewer account in the shared top bar', () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.user = { id: 3, email: '2329806037@qq.com', name: '审校员', role: 'REVIEWER' }
+  auth.user = {
+    id: 3,
+    email: '2329806037@qq.com',
+    name: '审校员',
+    ...emptyProfile,
+    role: 'REVIEWER',
+  }
   auth.initialized = true
 
   const wrapper = mount(DashboardView, { global: { plugins: [pinia, router] } })
@@ -132,11 +147,109 @@ it('shows the reviewer account in the shared top bar', () => {
   expect(wrapper.find('.hero').exists()).toBe(false)
 })
 
+it('updates the current user profile from personal settings', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const auth = useAuthStore()
+  auth.user = {
+    id: 3,
+    email: 'bob@example.com',
+    name: 'Bob',
+    ...emptyProfile,
+    role: 'REVIEWER',
+  }
+  auth.initialized = true
+
+  const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<unknown>>(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      id: 3,
+      email: 'bob.updated@example.com',
+      name: 'Bob Updated',
+      orcid: '0000-0002-1825-0097',
+      institution: 'ShanghaiTech University',
+      country: 'China',
+      role: 'REVIEWER',
+    }),
+  }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  const wrapper = mount(ProfileSettings, { global: { plugins: [pinia] } })
+  await wrapper.find('input[autocomplete="name"]').setValue('Bob Updated')
+  await wrapper.find('input[type="email"]').setValue('bob.updated@example.com')
+  await wrapper.find('#profile-orcid').setValue('0000-0002-1825-0097')
+  await wrapper.find('#profile-institution').setValue('ShanghaiTech University')
+  await wrapper.find('#profile-country').setValue('China')
+  await wrapper.find('.profile-form').trigger('submit')
+  await flushPromises()
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/auth/me',
+    expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Bob Updated',
+        email: 'bob.updated@example.com',
+        orcid: '0000-0002-1825-0097',
+        institution: 'ShanghaiTech University',
+        country: 'China',
+      }),
+    }),
+  )
+  expect(auth.user?.name).toBe('Bob Updated')
+  expect(auth.user?.email).toBe('bob.updated@example.com')
+  expect(wrapper.text()).toContain('个人信息已更新')
+})
+
+it('changes the current user password from personal settings', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const auth = useAuthStore()
+  auth.user = {
+    id: 3,
+    email: 'bob@example.com',
+    name: 'Bob',
+    ...emptyProfile,
+    role: 'REVIEWER',
+  }
+  auth.initialized = true
+
+  const fetchMock = vi.fn<() => Promise<unknown>>(async () => ({ ok: true, status: 204 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  const wrapper = mount(ProfileSettings, { global: { plugins: [pinia] } })
+  await wrapper.find('#current-password').setValue('current password')
+  await wrapper.find('#new-password').setValue('updated password')
+  await wrapper.find('#confirm-password').setValue('updated password')
+  await wrapper.find('.password-form').trigger('submit')
+  await flushPromises()
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/auth/password',
+    expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'current password',
+        newPassword: 'updated password',
+      }),
+    }),
+  )
+  expect(wrapper.text()).toContain('密码已修改')
+  expect((wrapper.find('#current-password').element as HTMLInputElement).value).toBe('')
+})
+
 it('opens an existing deposition without cloning the Vue proxy directly', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.user = { id: 1, email: 'alice@example.com', name: 'Alice', role: 'SUBMITTER' }
+  auth.user = {
+    id: 1,
+    email: 'alice@example.com',
+    name: 'Alice',
+    ...emptyProfile,
+    role: 'SUBMITTER',
+  }
   auth.initialized = true
 
   const fetchMock = vi.fn<(path: string) => Promise<unknown>>(async (path) => {
@@ -184,7 +297,13 @@ it('selects an experimental method before creating a deposition', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.user = { id: 1, email: 'alice@example.com', name: 'Alice', role: 'SUBMITTER' }
+  auth.user = {
+    id: 1,
+    email: 'alice@example.com',
+    name: 'Alice',
+    ...emptyProfile,
+    role: 'SUBMITTER',
+  }
   auth.initialized = true
 
   const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<unknown>>(
@@ -265,7 +384,7 @@ it('shows users instead of work items to an administrator', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.user = { id: 4, email: 'admin', name: '管理员', role: 'ADMIN' }
+  auth.user = { id: 4, email: 'admin', name: '管理员', ...emptyProfile, role: 'ADMIN' }
   auth.initialized = true
 
   const fetchMock = vi.fn<(path: string) => Promise<unknown>>(async () => ({
@@ -299,7 +418,7 @@ it('lets an administrator add accounts, change roles, and confirm deletion', asy
   const pinia = createPinia()
   setActivePinia(pinia)
   const auth = useAuthStore()
-  auth.user = { id: 4, email: 'admin', name: '管理员', role: 'ADMIN' }
+  auth.user = { id: 4, email: 'admin', name: '管理员', ...emptyProfile, role: 'ADMIN' }
   auth.initialized = true
 
   let rows: AdminUser[] = [
@@ -307,10 +426,18 @@ it('lets an administrator add accounts, change roles, and confirm deletion', asy
       id: 1,
       email: 'alice@example.com',
       name: 'Alice',
+      ...emptyProfile,
       role: 'SUBMITTER',
       createdAt: '2026-10-09T00:00:00.000Z',
     },
-    { id: 4, email: 'admin', name: '管理员', role: 'ADMIN', createdAt: '2026-10-09T00:00:00.000Z' },
+    {
+      id: 4,
+      email: 'admin',
+      name: '管理员',
+      ...emptyProfile,
+      role: 'ADMIN',
+      createdAt: '2026-10-09T00:00:00.000Z',
+    },
   ]
   const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<unknown>>(
     async (path, init) => {
@@ -329,7 +456,7 @@ it('lets an administrator add accounts, change roles, and confirm deletion', asy
           email: string
           role: 'SUBMITTER' | 'REVIEWER'
         }
-        rows.push({ id: 5, ...body, createdAt: '2026-10-09T00:00:00.000Z' })
+        rows.push({ id: 5, ...body, ...emptyProfile, createdAt: '2026-10-09T00:00:00.000Z' })
         return { ok: true, json: async () => rows[rows.length - 1] }
       }
       if (path === '/api/auth/users') return { ok: true, json: async () => rows }

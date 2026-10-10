@@ -17,6 +17,9 @@ describe('authentication HTTP flow', () => {
     id: number;
     email: string;
     name: string;
+    orcid?: string | null;
+    institution?: string | null;
+    country?: string | null;
     passwordHash: string;
     role: 'SUBMITTER' | 'REVIEWER' | 'ADMIN';
   }> = [];
@@ -46,26 +49,52 @@ describe('authentication HTTP flow', () => {
             (user) => user.email === where.email || user.id === where.id,
           ) ?? null,
         findMany: async () =>
-          users.map(({ id, email, name, role }) => ({
-            id,
-            email,
-            name,
-            role,
-            createdAt: new Date('2026-10-09T00:00:00.000Z'),
-          })),
+          users.map(
+            ({ id, email, name, orcid, institution, country, role }) => ({
+              id,
+              email,
+              name,
+              orcid,
+              institution,
+              country,
+              role,
+              createdAt: new Date('2026-10-09T00:00:00.000Z'),
+            }),
+          ),
         update: async ({
           where,
           data,
         }: {
-          where: { id: number; role: (typeof users)[number]['role'] };
-          data: { role: (typeof users)[number]['role'] };
+          where: { id: number; role?: (typeof users)[number]['role'] };
+          data: Partial<
+            Pick<
+              (typeof users)[number],
+              | 'name'
+              | 'email'
+              | 'orcid'
+              | 'institution'
+              | 'country'
+              | 'passwordHash'
+              | 'role'
+            >
+          >;
         }) => {
           const user = users.find(
-            (entry) => entry.id === where.id && entry.role === where.role,
+            (entry) =>
+              entry.id === where.id &&
+              (where.role === undefined || entry.role === where.role),
           );
           if (!user)
             throw Object.assign(new Error('not found'), { code: 'P2025' });
-          user.role = data.role;
+          if (
+            data.email &&
+            users.some(
+              (entry) => entry.id !== user.id && entry.email === data.email,
+            )
+          ) {
+            throw Object.assign(new Error('duplicate'), { code: 'P2002' });
+          }
+          Object.assign(user, data);
           return { ...user, createdAt: new Date('2026-10-09T00:00:00.000Z') };
         },
         delete: async ({
@@ -355,5 +384,110 @@ describe('authentication HTTP flow', () => {
       .get('/api/auth/me')
       .set('Cookie', createdCookie)
       .expect(401);
+  });
+
+  it('lets a signed-in user update only their own profile fields', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'bob@example.com', password: 'another secure password' })
+      .expect(200);
+    const cookie = (login.headers['set-cookie'] as string[])[0]!;
+
+    await request(app.getHttpServer())
+      .patch('/api/auth/me')
+      .send({ name: '未登录用户', email: 'anonymous@example.com' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({ name: 'Bob Updated', email: 'operator@example.com' })
+      .expect(409);
+    await request(app.getHttpServer())
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({
+        name: 'Bob Updated',
+        email: 'bob.updated@example.com',
+        role: 'ADMIN',
+      })
+      .expect(400);
+
+    const updated = await request(app.getHttpServer())
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({
+        name: 'Bob Updated',
+        email: 'bob.updated@example.com',
+        orcid: '0000-0002-1825-0097',
+        institution: 'ShanghaiTech University',
+        country: 'China',
+      })
+      .expect(200);
+    expect(updated.body).toMatchObject({
+      name: 'Bob Updated',
+      email: 'bob.updated@example.com',
+      orcid: '0000-0002-1825-0097',
+      institution: 'ShanghaiTech University',
+      country: 'China',
+      role: 'REVIEWER',
+    });
+  });
+
+  it('requires the current password before changing it', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: 'bob.updated@example.com',
+        password: 'another secure password',
+      })
+      .expect(200);
+    const cookie = (login.headers['set-cookie'] as string[])[0]!;
+
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .send({
+        currentPassword: 'another secure password',
+        newPassword: 'new secure password',
+      })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Cookie', cookie)
+      .send({
+        currentPassword: 'wrong password',
+        newPassword: 'new secure password',
+      })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Cookie', cookie)
+      .send({
+        currentPassword: 'another secure password',
+        newPassword: '1234567',
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Cookie', cookie)
+      .send({
+        currentPassword: 'another secure password',
+        newPassword: 'new secure password',
+      })
+      .expect(204);
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: 'bob.updated@example.com',
+        password: 'another secure password',
+      })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: 'bob.updated@example.com',
+        password: 'new secure password',
+      })
+      .expect(200);
   });
 });

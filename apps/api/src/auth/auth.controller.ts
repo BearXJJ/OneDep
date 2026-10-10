@@ -59,6 +59,27 @@ export class AuthController {
     return request.authUser;
   }
 
+  @Patch('me')
+  updateProfile(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'no-store');
+    return this.auth.updateProfile(request.authUser.id, body);
+  }
+
+  @Patch('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  updatePassword(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'no-store');
+    return this.auth.updatePassword(request.authUser.id, body);
+  }
+
   @Roles('ADMIN')
   @Get('users')
   users(@Res({ passthrough: true }) response: Response) {

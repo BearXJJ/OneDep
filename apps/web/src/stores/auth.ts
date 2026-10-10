@@ -4,6 +4,14 @@ import type { AuthUser, RegistrationRole } from '@onedep/shared'
 
 type Credentials = { email: string; password: string }
 type Registration = Credentials & { name: string; role: RegistrationRole }
+type ProfileUpdate = {
+  name: string
+  email: string
+  orcid: string
+  institution: string
+  country: string
+}
+type PasswordUpdate = { currentPassword: string; newPassword: string }
 
 // 将接口错误转换为表单可显示的提示。
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -50,10 +58,26 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
+  // 保存当前用户资料，并立即同步页面中的账号信息。
+  async function updateProfile(profile: ProfileUpdate) {
+    user.value = await request<AuthUser>('me', {
+      method: 'PATCH',
+      body: JSON.stringify(profile),
+    })
+  }
+
+  // 修改密码时不改变当前登录会话和页面中的用户资料。
+  async function updatePassword(passwords: PasswordUpdate) {
+    await request<void>('password', {
+      method: 'PATCH',
+      body: JSON.stringify(passwords),
+    })
+  }
+
   async function logout() {
     await request<void>('logout', { method: 'POST' })
     user.value = null
   }
 
-  return { user, initialized, restore, login, register, logout }
+  return { user, initialized, restore, login, register, updateProfile, updatePassword, logout }
 })

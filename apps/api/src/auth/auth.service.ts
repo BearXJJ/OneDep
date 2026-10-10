@@ -27,12 +27,18 @@ function publicUser(user: {
   id: number;
   email: string;
   name: string | null;
+  orcid?: string | null;
+  institution?: string | null;
+  country?: string | null;
   role: UserRole;
 }): AuthUser {
   return {
     id: user.id,
     email: user.email,
     name: user.name ?? user.email,
+    orcid: user.orcid ?? '',
+    institution: user.institution ?? '',
+    country: user.country ?? '',
     role: user.role,
   };
 }
@@ -41,6 +47,9 @@ function adminUser(user: {
   id: number;
   email: string;
   name: string | null;
+  orcid?: string | null;
+  institution?: string | null;
+  country?: string | null;
   role: UserRole;
   createdAt: Date;
 }): AdminUser {
@@ -64,19 +73,8 @@ export class AuthService {
     }
 
     const { name, email, password, role } = input as Record<string, unknown>;
-    const cleanName = typeof name === 'string' ? name.trim() : '';
-    const cleanEmail =
-      typeof email === 'string' ? email.trim().toLowerCase() : '';
-
-    if (cleanName.length < 2 || cleanName.length > 80) {
-      throw new BadRequestException('姓名需要 2–80 个字符');
-    }
-    if (
-      cleanEmail.length > 254 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
-    ) {
-      throw new BadRequestException('请输入有效的邮箱');
-    }
+    const cleanName = parseName(name);
+    const cleanEmail = parseEmail(email);
     if (
       typeof password !== 'string' ||
       password.length < 8 ||
@@ -176,6 +174,81 @@ export class AuthService {
     return publicUser(user);
   }
 
+  // 当前用户只能修改自己的公开资料，账号角色仍由管理员管理。
+  async updateProfile(userId: number, input: unknown): Promise<AuthUser> {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new BadRequestException('请填写个人信息');
+    }
+    const fields = input as Record<string, unknown>;
+    const editableFields = ['name', 'email', 'orcid', 'institution', 'country'];
+    if (Object.keys(fields).some((field) => !editableFields.includes(field))) {
+      throw new BadRequestException('包含不可修改的个人信息');
+    }
+
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          name: parseName(fields.name),
+          email: parseEmail(fields.email),
+          orcid: parseOrcid(fields.orcid),
+          institution: parseOptionalText(fields.institution, '机构', 200),
+          country: parseOptionalText(fields.country, '国家或地区', 100),
+        },
+      });
+      return publicUser(user);
+    } catch (error) {
+      if ((error as { code?: string }).code === 'P2002') {
+        throw new ConflictException('该邮箱已经注册');
+      }
+      if ((error as { code?: string }).code === 'P2025') {
+        throw new NotFoundException('用户不存在');
+      }
+      throw error;
+    }
+  }
+
+  // 修改密码前再次验证当前密码，避免登录会话被他人直接用于换密。
+  async updatePassword(userId: number, input: unknown): Promise<void> {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new BadRequestException('请填写当前密码和新密码');
+    }
+
+    const fields = input as Record<string, unknown>;
+    if (
+      Object.keys(fields).some(
+        (field) => field !== 'currentPassword' && field !== 'newPassword',
+      )
+    ) {
+      throw new BadRequestException('密码修改参数无效');
+    }
+    const { currentPassword, newPassword } = fields;
+    if (typeof currentPassword !== 'string' || !currentPassword) {
+      throw new BadRequestException('请输入当前密码');
+    }
+    if (
+      typeof newPassword !== 'string' ||
+      newPassword.length < 8 ||
+      newPassword.length > 128
+    ) {
+      throw new BadRequestException('新密码需要 8–128 个字符');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('新密码不能与当前密码相同');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('用户不存在');
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('当前密码不正确');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(newPassword) },
+    });
+  }
+
   // 返回用户资料并明确排除密码哈希，访问权限由 Guard 统一控制。
   async listUsers(): Promise<AdminUser[]> {
     const users = await this.prisma.user.findMany({
@@ -183,6 +256,9 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        orcid: true,
+        institution: true,
+        country: true,
         role: true,
         createdAt: true,
       },
@@ -231,6 +307,9 @@ export class AuthService {
           id: true,
           email: true,
           name: true,
+          orcid: true,
+          institution: true,
+          country: true,
           role: true,
           createdAt: true,
         },
@@ -274,4 +353,41 @@ export class AuthService {
   async deleteSession(token?: string): Promise<void> {
     if (token) await this.redis.client.del(sessionKey(token));
   }
+}
+
+function parseName(value: unknown): string {
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (name.length < 2 || name.length > 80) {
+    throw new BadRequestException('姓名需要 2–80 个字符');
+  }
+  return name;
+}
+
+function parseEmail(value: unknown): string {
+  const email = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new BadRequestException('请输入有效的邮箱');
+  }
+  return email;
+}
+
+function parseOrcid(value: unknown): string | null {
+  const orcid = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (!orcid) return null;
+  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcid)) {
+    throw new BadRequestException('请输入有效的 ORCID');
+  }
+  return orcid;
+}
+
+function parseOptionalText(
+  value: unknown,
+  label: string,
+  maxLength: number,
+): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (text.length > maxLength) {
+    throw new BadRequestException(`${label}不能超过 ${maxLength} 个字符`);
+  }
+  return text || null;
 }

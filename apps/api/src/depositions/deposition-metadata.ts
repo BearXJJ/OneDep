@@ -6,8 +6,17 @@ import type {
   DepositionMetadata,
 } from '@onedep/shared';
 
-const CITATION_STATUSES = ['UNPUBLISHED', 'IN_PREPARATION', 'SUBMITTED', 'PUBLISHED'] as const;
-const RELEASE_STATUSES = ['IMMEDIATE', 'HOLD_FOR_PUBLICATION', 'HOLD_UNTIL_DATE'] as const;
+const CITATION_STATUSES = [
+  'UNPUBLISHED',
+  'IN_PREPARATION',
+  'SUBMITTED',
+  'PUBLISHED',
+] as const;
+const RELEASE_STATUSES = [
+  'IMMEDIATE',
+  'HOLD_FOR_PUBLICATION',
+  'HOLD_UNTIL_DATE',
+] as const;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -18,9 +27,9 @@ export function createDefaultMetadata(user: AuthUser): DepositionMetadata {
     contact: {
       name: user.name,
       email: user.email,
-      orcid: '',
-      institution: '',
-      country: '',
+      orcid: user.orcid,
+      institution: user.institution,
+      country: user.country,
     },
     authors: [],
     citation: { status: 'UNPUBLISHED', title: '', journal: '', doi: '' },
@@ -42,7 +51,11 @@ export function createDefaultMetadata(user: AuthUser): DepositionMetadata {
       spaceGroup: '',
       resolution: '',
     },
-    release: { status: 'HOLD_FOR_PUBLICATION', holdUntil: '', termsAccepted: false },
+    release: {
+      status: 'HOLD_FOR_PUBLICATION',
+      holdUntil: '',
+      termsAccepted: false,
+    },
   };
 }
 
@@ -95,7 +108,11 @@ export function parseMetadata(value: unknown): DepositionMetadata {
     xray: {
       crystallizationMethod: text(xray.crystallizationMethod, '结晶方法', 300),
       crystallizationPh: text(xray.crystallizationPh, '结晶 pH', 30),
-      crystallizationTemperature: text(xray.crystallizationTemperature, '结晶温度', 30),
+      crystallizationTemperature: text(
+        xray.crystallizationTemperature,
+        '结晶温度',
+        30,
+      ),
       spaceGroup: text(xray.spaceGroup, '空间群', 80),
       resolution: text(xray.resolution, '分辨率', 30),
     },
@@ -132,8 +149,15 @@ export function calculateCompletion(
     [filled(metadata.xray.crystallizationTemperature), '结晶温度'],
     [filled(metadata.xray.spaceGroup), '空间群'],
     [files.some((file) => file.kind === 'COORDINATE'), '坐标文件（mmCIF）'],
-    [files.some((file) => file.kind === 'STRUCTURE_FACTOR'), '结构因子文件（CIF 或 MTZ）'],
-    [metadata.release.status !== 'HOLD_UNTIL_DATE' || validDate(metadata.release.holdUntil), '有效的保留截止日期'],
+    [
+      files.some((file) => file.kind === 'STRUCTURE_FACTOR'),
+      '结构因子文件（CIF 或 MTZ）',
+    ],
+    [
+      metadata.release.status !== 'HOLD_UNTIL_DATE' ||
+        validDate(metadata.release.holdUntil),
+      '有效的保留截止日期',
+    ],
     [metadata.release.termsAccepted, '数据真实性与发布条款确认'],
   ];
 
@@ -144,7 +168,9 @@ export function calculateCompletion(
     );
   }
 
-  const missing = checks.filter(([complete]) => !complete).map(([, label]) => label);
+  const missing = checks
+    .filter(([complete]) => !complete)
+    .map(([, label]) => label);
   const completed = checks.length - missing.length;
   return {
     completed,
@@ -162,13 +188,20 @@ function record(value: unknown, label: string): UnknownRecord {
 }
 
 function text(value: unknown, label: string, maxLength: number): string {
-  if (typeof value !== 'string') throw new BadRequestException(`${label}格式不正确`);
+  if (typeof value !== 'string')
+    throw new BadRequestException(`${label}格式不正确`);
   const normalized = value.trim();
-  if (normalized.length > maxLength) throw new BadRequestException(`${label}内容过长`);
+  if (normalized.length > maxLength)
+    throw new BadRequestException(`${label}内容过长`);
   return normalized;
 }
 
-function stringList(value: unknown, label: string, maxItems: number, maxLength: number): string[] {
+function stringList(
+  value: unknown,
+  label: string,
+  maxItems: number,
+  maxLength: number,
+): string[] {
   if (!Array.isArray(value) || value.length > maxItems) {
     throw new BadRequestException(`${label}格式不正确`);
   }
@@ -187,7 +220,8 @@ function enumValue<const T extends readonly string[]>(
 }
 
 function booleanValue(value: unknown, label: string): boolean {
-  if (typeof value !== 'boolean') throw new BadRequestException(`${label}格式不正确`);
+  if (typeof value !== 'boolean')
+    throw new BadRequestException(`${label}格式不正确`);
   return value;
 }
 
@@ -204,5 +238,8 @@ function validOrcid(value: string): boolean {
 }
 
 function validDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+  );
 }

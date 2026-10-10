@@ -5,6 +5,9 @@ export interface AuthUser {
   id: number;
   email: string;
   name: string;
+  orcid: string;
+  institution: string;
+  country: string;
   role: UserRole;
 }
 

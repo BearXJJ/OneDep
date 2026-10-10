@@ -1,11 +1,17 @@
 import type { DepositionFileKind } from '@onedep/shared';
 
-import { calculateCompletion, createDefaultMetadata } from './deposition-metadata.js';
+import {
+  calculateCompletion,
+  createDefaultMetadata,
+} from './deposition-metadata.js';
 
 const user = {
   id: 1,
   name: 'Alice',
   email: 'alice@example.com',
+  orcid: '0000-0002-1825-0097',
+  institution: 'Example University',
+  country: 'China',
   role: 'SUBMITTER' as const,
 };
 
@@ -15,6 +21,12 @@ describe('投递完整性规则', () => {
     expect(completion.missing).toContain('坐标文件（mmCIF）');
     expect(completion.missing).toContain('结构因子文件（CIF 或 MTZ）');
     expect(completion.missing).toContain('大分子序列');
+    expect(completion.missing).not.toContain('联系人单位');
+    expect(createDefaultMetadata(user).contact).toMatchObject({
+      orcid: user.orcid,
+      institution: user.institution,
+      country: user.country,
+    });
     expect(completion.percent).toBeLessThan(100);
   });
 
@@ -36,7 +48,9 @@ describe('投递完整性规则', () => {
     metadata.xray.crystallizationTemperature = '293';
     metadata.xray.spaceGroup = 'P 21 21 21';
     metadata.release.termsAccepted = true;
-    const files = (['COORDINATE', 'STRUCTURE_FACTOR'] as DepositionFileKind[]).map((kind) => ({ kind }));
+    const files = (
+      ['COORDINATE', 'STRUCTURE_FACTOR'] as DepositionFileKind[]
+    ).map((kind) => ({ kind }));
 
     const completion = calculateCompletion(metadata, files);
     expect(completion.missing).toEqual([]);
