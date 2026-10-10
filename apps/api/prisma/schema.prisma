@@ -8,17 +8,71 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  name         String?
   passwordHash String
-  role      Role     @default(SUBMITTER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role         Role         @default(SUBMITTER)
+  depositions  Deposition[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Deposition {
+  id          Int               @id @default(autoincrement())
+  code        String            @unique
+  method      DepositionMethod  @default(XRAY)
+  methods     DepositionMethod[] @default([])
+  status      DepositionStatus  @default(DRAFT)
+  creation    Json              @default("{}")
+  metadata    Json              @default("{}")
+  submitterId Int
+  submitter   User              @relation(fields: [submitterId], references: [id], onDelete: Cascade)
+  files       DepositionFile[]
+  submittedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([submitterId, updatedAt])
+}
+
+model DepositionFile {
+  id           Int                @id @default(autoincrement())
+  depositionId Int
+  deposition   Deposition         @relation(fields: [depositionId], references: [id], onDelete: Cascade)
+  kind         DepositionFileKind
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  checksum     String
+  createdAt    DateTime           @default(now())
+
+  @@unique([depositionId, kind])
 }
 
 enum Role {
   SUBMITTER
   REVIEWER
   ADMIN
+}
+
+enum DepositionMethod {
+  XRAY
+  EM
+  NMR
+  NEUTRON
+  EC
+  SSNMR
+  FIBER
+}
+
+enum DepositionStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum DepositionFileKind {
+  COORDINATE
+  STRUCTURE_FACTOR
 }

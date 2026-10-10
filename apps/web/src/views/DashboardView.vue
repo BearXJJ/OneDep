@@ -5,7 +5,15 @@
         <span class="brand">OneDep<span>.</span></span>
       </div>
       <div class="topbar-main">
-        <span class="area-name">{{ isAdmin ? '管理后台' : '工作台' }}</span>
+        <button
+          v-if="isSubmitter && submitterEditing"
+          type="button"
+          class="topbar-back"
+          @click="returnToDepositionList"
+        >
+          <span aria-hidden="true">←</span> 返回投递列表
+        </button>
+        <span v-else class="area-name">{{ areaName }}</span>
         <div class="account-info">
           <span class="account-role">{{ roleLabel }}</span>
           <span class="account-email" :title="auth.user?.email">{{ auth.user?.email }}</span>
@@ -46,7 +54,7 @@
                 stroke-linecap="round"
               />
             </svg>
-            <span>{{ isAdmin ? '用户管理' : '工作事项' }}</span>
+            <span>{{ navigationLabel }}</span>
           </RouterLink>
         </nav>
       </aside>
@@ -54,8 +62,14 @@
       <section class="workspace">
         <AdminUsersPanel v-if="isAdmin" />
 
+        <SubmitterWorkspace
+          v-else-if="isSubmitter"
+          ref="submitterWorkspace"
+          @view-change="submitterEditing = $event"
+        />
+
         <div v-else class="work-items" aria-labelledby="workspace-title">
-          <h1 id="workspace-title">工作事项</h1>
+          <h1 id="workspace-title">审校任务</h1>
           <div class="empty-state">
             <span class="empty-icon" aria-hidden="true">
               <svg viewBox="0 0 48 48" fill="none">
@@ -90,6 +104,7 @@ import type { UserRole } from '@onedep/shared'
 import { useRouter } from 'vue-router'
 
 import AdminUsersPanel from '@/components/AdminUsersPanel.vue'
+import SubmitterWorkspace from '@/components/SubmitterWorkspace.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -102,8 +117,24 @@ const auth = useAuthStore()
 const router = useRouter()
 const leaving = ref(false)
 const error = ref('')
+const submitterEditing = ref(false)
+const submitterWorkspace = ref<{ closeDraft: () => Promise<void> } | null>(null)
 const isAdmin = computed(() => auth.user?.role === 'ADMIN')
+const isSubmitter = computed(() => auth.user?.role === 'SUBMITTER')
 const roleLabel = computed(() => ROLE_LABELS[auth.user?.role ?? 'SUBMITTER'])
+const areaName = computed(() => {
+  if (isAdmin.value) return '管理后台'
+  return isSubmitter.value ? '我的投递' : '审校任务'
+})
+const navigationLabel = computed(() => {
+  if (isAdmin.value) return '用户管理'
+  return isSubmitter.value ? '我的投递' : '审校任务'
+})
+
+// 从顶部栏关闭当前草稿并返回投递列表。
+function returnToDepositionList() {
+  void submitterWorkspace.value?.closeDraft()
+}
 
 // 结束服务端会话后返回登录页。
 async function logout() {
@@ -167,6 +198,22 @@ async function logout() {
         color: #758078;
         font-size: 13px;
         font-weight: 550;
+      }
+
+      .topbar-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0;
+        border: 0;
+        color: #59675e;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 550;
+
+        &:hover {
+          color: #24513e;
+        }
       }
 
       .account-info {
@@ -237,6 +284,11 @@ async function logout() {
     grid-template-columns: 232px minmax(0, 1fr);
 
     .sidebar {
+      position: sticky;
+      top: 64px;
+      align-self: start;
+      height: calc(100vh - 64px);
+      overflow-y: auto;
       padding: 24px 14px;
       background: #17231d;
 
@@ -309,61 +361,6 @@ async function logout() {
             font-size: 14px;
           }
         }
-      }
-    }
-  }
-
-  @media (max-width: 720px) {
-    grid-template-rows: auto 1fr;
-
-    .topbar {
-      grid-template-columns: 104px minmax(0, 1fr);
-
-      .brand-cell {
-        min-height: 60px;
-        padding: 0 16px;
-      }
-
-      .topbar-main {
-        min-height: 60px;
-        padding: 0 14px;
-
-        .area-name {
-          display: none;
-        }
-
-        .account-info {
-          width: 100%;
-          justify-content: flex-end;
-          gap: 7px;
-
-          .account-email {
-            max-width: 34vw;
-          }
-
-          button {
-            padding-right: 0;
-          }
-        }
-      }
-    }
-
-    .app-layout {
-      grid-template-columns: 1fr;
-
-      .sidebar {
-        padding: 8px 16px;
-
-        nav {
-          .nav-link {
-            width: fit-content;
-            min-height: 38px;
-          }
-        }
-      }
-
-      .workspace {
-        padding: 28px 18px 40px;
       }
     }
   }

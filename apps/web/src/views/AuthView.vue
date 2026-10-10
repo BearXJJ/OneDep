@@ -274,31 +274,5 @@ async function submit() {
       }
     }
   }
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: 72px 1fr;
-
-    .brand-panel {
-      justify-items: start;
-      padding: 0 22px;
-
-      .brand {
-        font-size: 26px;
-      }
-    }
-
-    .form-panel {
-      align-items: start;
-      padding: 48px 22px 64px;
-
-      .form-inner {
-        h1 {
-          margin-bottom: 30px;
-          font-size: 26px;
-        }
-      }
-    }
-  }
 }
 </style>

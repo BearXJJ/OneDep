@@ -10,6 +10,8 @@ RUN pnpm build
 FROM build AS api
 ENV NODE_ENV=production
 WORKDIR /app/apps/api
+USER root
+RUN mkdir -p /data/uploads && chown node:node /data/uploads
 USER node
 CMD ["node", "dist/main.js"]
 

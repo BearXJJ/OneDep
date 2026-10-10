@@ -12,22 +12,18 @@ import {
   Req,
   Res,
   Cookies,
-  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { IS_PRODUCTION, SESSION_COOKIE_NAME } from './auth.constants.js';
 import { AuthService, SESSION_SECONDS } from './auth.service.js';
-import {
-  type AuthenticatedRequest,
-  Roles,
-  SessionGuard,
-} from './session.guard.js';
+import { type AuthenticatedRequest, Public, Roles } from './session.guard.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @Public()
   @Post('register')
   async register(
     @Body() body: unknown,
@@ -40,6 +36,7 @@ export class AuthController {
     return user;
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -53,7 +50,6 @@ export class AuthController {
     return user;
   }
 
-  @UseGuards(SessionGuard)
   @Get('me')
   me(
     @Req() request: AuthenticatedRequest,
@@ -64,7 +60,6 @@ export class AuthController {
   }
 
   @Roles('ADMIN')
-  @UseGuards(SessionGuard)
   @Get('users')
   users(@Res({ passthrough: true }) response: Response) {
     response.setHeader('Cache-Control', 'no-store');
@@ -72,7 +67,6 @@ export class AuthController {
   }
 
   @Roles('ADMIN')
-  @UseGuards(SessionGuard)
   @Post('users')
   createUser(
     @Body() body: unknown,
@@ -83,7 +77,6 @@ export class AuthController {
   }
 
   @Roles('ADMIN')
-  @UseGuards(SessionGuard)
   @Patch('users/:id')
   updateUser(
     @Param('id', ParseIntPipe) id: number,
@@ -95,7 +88,6 @@ export class AuthController {
   }
 
   @Roles('ADMIN')
-  @UseGuards(SessionGuard)
   @Delete('users/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeUser(

@@ -3,6 +3,7 @@ node_modules
 .env
 
 /src/generated/prisma
+/uploads/
 
 # 本地 Prisma 助手技能文件
 /.agents/

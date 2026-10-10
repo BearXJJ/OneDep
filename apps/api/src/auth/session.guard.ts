@@ -13,10 +13,12 @@ import { SESSION_COOKIE_NAME } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 
 const ROLES_KEY = 'auth:roles';
+const PUBLIC_KEY = 'auth:public';
 
 export type AuthenticatedRequest = Request & { authUser: AuthUser };
 
 export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+export const Public = () => SetMetadata(PUBLIC_KEY, true);
 
 // 从原始请求头读取指定 Cookie，避免依赖额外的 Cookie 中间件。
 function readCookie(request: Request, name: string): string | undefined {
@@ -45,6 +47,12 @@ export class SessionGuard implements CanActivate {
 
   // 统一校验会话，并将当前用户交给后续控制器使用。
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = readCookie(request, SESSION_COOKIE_NAME);
     const user = await this.auth.currentUser(token);

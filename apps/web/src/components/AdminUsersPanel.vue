@@ -519,21 +519,5 @@ function formatDate(value: string): string {
       }
     }
   }
-
-  @media (max-width: 720px) {
-    .page-heading {
-      margin-bottom: 18px;
-
-      .title-group {
-        h1 {
-          font-size: 21px;
-        }
-      }
-    }
-
-    .list-panel {
-      border-radius: 10px;
-    }
-  }
 }
 </style>

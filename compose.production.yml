@@ -47,6 +47,9 @@ services:
       DATABASE_URL: postgresql://onedep:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}@postgres:5432/onedep?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads_data:/data/uploads
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -71,3 +74,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:

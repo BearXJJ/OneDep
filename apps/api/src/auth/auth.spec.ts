@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
@@ -103,6 +104,7 @@ describe('authentication HTTP flow', () => {
       providers: [
         AuthService,
         SessionGuard,
+        { provide: APP_GUARD, useExisting: SessionGuard },
         { provide: PrismaService, useValue: prisma },
         { provide: RedisService, useValue: redis },
       ],
@@ -168,6 +170,7 @@ describe('authentication HTTP flow', () => {
       .get('/api/auth/me')
       .set('Cookie', cookie!)
       .expect(200);
+    await request(app.getHttpServer()).post('/api/auth/logout').expect(401);
     await request(app.getHttpServer())
       .post('/api/auth/logout')
       .set('Cookie', cookie!)
