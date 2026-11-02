@@ -1,1 +1,3 @@
 pnpm lint-staged
+pnpm --filter @onedep/shared build
+pnpm --filter @onedep/shared test

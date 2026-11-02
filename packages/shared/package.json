@@ -5,6 +5,23 @@
   "exports": {
     ".": {
       "types": "./src/index.ts"
+    },
+    "./deposition": {
+      "types": "./dist/deposition/index.d.ts",
+      "import": "./dist/deposition/index.js"
     }
+  },
+  "dependencies": {
+    "survey-core": "3.2.3",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
   }
 }
