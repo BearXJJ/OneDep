@@ -177,6 +177,7 @@
 </template>
 
 <script setup lang="ts">
+import { httpError } from '@/data/http-error'
 import { computed, onMounted, ref } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
 import { ElDialog } from 'element-plus/es/components/dialog/index'
@@ -218,10 +219,8 @@ async function loadUsers() {
   loadError.value = ''
   try {
     const response = await fetch('/api/auth/users')
-    if (!response.ok) throw new Error('用户加载失败，请稍后重试。')
+    if (!response.ok) throw await httpError(response)
     users.value = (await response.json()) as AdminUser[]
-  } catch {
-    loadError.value = '用户加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }
@@ -261,11 +260,6 @@ function beforeCloseDrawer(done: () => void) {
 }
 
 // 读取接口返回的错误信息，供用户管理操作显示。
-async function responseError(response: Response): Promise<string> {
-  const body = (await response.json().catch(() => ({}))) as { message?: string | string[] }
-  const message = Array.isArray(body.message) ? body.message[0] : body.message
-  return message || '操作失败，请稍后重试。'
-}
 
 // 新增公开角色账户，或只修改现有账户的角色。
 async function saveUser() {
@@ -291,7 +285,7 @@ async function saveUser() {
           : { role: formRole.value },
       ),
     })
-    if (!response.ok) throw new Error(await responseError(response))
+    if (!response.ok) throw await httpError(response)
 
     if (creating) {
       await loadUsers()
@@ -301,8 +295,6 @@ async function saveUser() {
     }
     drawerOpen.value = false
     selectedUser.value = null
-  } catch (cause) {
-    formError.value = cause instanceof Error ? cause.message : '操作失败，请稍后重试。'
   } finally {
     submitting.value = false
   }
@@ -317,14 +309,11 @@ async function removeUser() {
   formError.value = ''
   try {
     const response = await fetch(`/api/auth/users/${target.id}`, { method: 'DELETE' })
-    if (!response.ok) throw new Error(await responseError(response))
+    if (!response.ok) throw await httpError(response)
     users.value = users.value.filter((user) => user.id !== target.id)
     deleteDialogOpen.value = false
     drawerOpen.value = false
     selectedUser.value = null
-  } catch (cause) {
-    deleteDialogOpen.value = false
-    formError.value = cause instanceof Error ? cause.message : '删除失败，请稍后重试。'
   } finally {
     submitting.value = false
   }
@@ -339,185 +328,3 @@ function formatDate(value: string): string {
 }
 </script>
 
-<style lang="less" scoped>
-.admin-users {
-  width: 100%;
-
-  .page-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 24px;
-
-    .title-group {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      h1 {
-        margin: 0;
-        color: #17231d;
-        font-size: 24px;
-        font-weight: 650;
-        letter-spacing: -0.04em;
-      }
-
-      .user-count {
-        display: grid;
-        min-width: 24px;
-        height: 24px;
-        place-items: center;
-        padding: 0 7px;
-        border-radius: 12px;
-        color: #4f6256;
-        background: #e8ede9;
-        font-size: 12px;
-        font-weight: 600;
-      }
-    }
-
-    .create-button {
-      --el-button-bg-color: #24513e;
-      --el-button-border-color: #24513e;
-      --el-button-hover-bg-color: #31644e;
-      --el-button-hover-border-color: #31644e;
-      --el-button-active-bg-color: #1c4232;
-      --el-button-active-border-color: #1c4232;
-      height: 38px;
-      padding: 0 18px;
-      border-radius: 8px;
-      font-weight: 550;
-    }
-  }
-
-  .list-panel {
-    overflow: hidden;
-    border: 1px solid #e2e7e3;
-    border-radius: 12px;
-    background: #fff;
-    box-shadow: 0 8px 28px rgb(31 47 38 / 5%);
-
-    .list-state {
-      display: flex;
-      min-height: 220px;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      color: #748078;
-      font-size: 14px;
-
-      &.error-state {
-        color: #a3473f;
-      }
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-
-      table {
-        width: 100%;
-        min-width: 720px;
-        border-collapse: collapse;
-        text-align: left;
-
-        th,
-        td {
-          padding: 17px 22px;
-          border-bottom: 1px solid #edf0ed;
-        }
-
-        th {
-          color: #778178;
-          background: #fafbfa;
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
-        }
-
-        tbody {
-          tr {
-            transition: background 0.16s ease;
-
-            &:hover {
-              background: #fbfcfb;
-            }
-
-            &:last-child td {
-              border-bottom: 0;
-            }
-          }
-        }
-
-        td {
-          color: #465149;
-          font-size: 14px;
-
-          .user-cell {
-            display: grid;
-            min-width: 240px;
-            gap: 3px;
-
-            strong {
-              overflow: hidden;
-              color: #202a24;
-              font-weight: 600;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-
-            span {
-              overflow: hidden;
-              color: #89928b;
-              font-size: 12px;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-          }
-
-          .role-badge {
-            display: inline-flex;
-            min-height: 26px;
-            align-items: center;
-            padding: 0 9px;
-            border-radius: 7px;
-            color: #43544a;
-            background: #edf1ee;
-            font-size: 12px;
-
-            &.is-reviewer {
-              color: #625339;
-              background: #f3efe5;
-            }
-
-            &.is-admin {
-              color: #54436a;
-              background: #f0ebf5;
-            }
-          }
-
-          &.date-cell {
-            color: #69746c;
-            font-variant-numeric: tabular-nums;
-          }
-        }
-
-        .action-column {
-          width: 88px;
-          text-align: right;
-
-          .edit-button {
-            --el-button-text-color: #315844;
-            --el-button-hover-text-color: #1d3f2f;
-            font-weight: 550;
-          }
-
-          .locked-mark {
-            color: #b1b8b2;
-          }
-        }
-      }
-    }
-  }
-}
-</style>

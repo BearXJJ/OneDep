@@ -1,8 +1,9 @@
 <template>
   <section class="submitter-workspace">
     <template v-if="!selected && !selectingMethod">
+      <h1 class="section-heading">投递记录 / Depositions</h1>
       <div class="list-actions">
-        <ElButton type="primary" @click="beginCreate">新建投递</ElButton>
+        <ElButton type="primary" @click="beginCreate"><Plus class="nav-icon" />新建投递</ElButton>
       </div>
 
       <div v-if="loading" class="state-panel">正在加载投递记录…</div>
@@ -32,7 +33,7 @@
           @click="openDraft(item.id)"
         >
           <span class="submission-main">
-            <strong>{{ item.title || '未命名条目' }}</strong>
+            <span class="submission-title">{{ item.title }}</span>
             <small>{{ item.code }} · 更新于 {{ formatDate(item.updatedAt) }}</small>
           </span>
           <span class="status-badge" :class="{ submitted: item.status === 'SUBMITTED' }">
@@ -61,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { Plus } from "@element-plus/icons-vue"
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
 import type { DepositionCreationOptions, DepositionDetail, DepositionSummary } from '@onedep/shared'
@@ -92,8 +94,6 @@ async function loadList() {
   error.value = ''
   try {
     items.value = await listDepositions()
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '投递记录加载失败'
   } finally {
     loading.value = false
   }
@@ -112,8 +112,6 @@ async function createDraft(options: DepositionCreationOptions) {
   try {
     selected.value = await createDeposition(options)
     selectingMethod.value = false
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '新建投递失败'
   } finally {
     creating.value = false
   }
@@ -124,8 +122,6 @@ async function openDraft(id: number) {
   error.value = ''
   try {
     selected.value = await getDeposition(id)
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '投递加载失败'
   } finally {
     loading.value = false
   }
@@ -152,124 +148,3 @@ function formatDate(value: string): string {
 }
 </script>
 
-<style lang="less" scoped>
-.submitter-workspace {
-  width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-
-  .list-actions {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 24px;
-  }
-
-  .state-panel,
-  .empty-panel,
-  .submission-list {
-    border: 1px solid #e2e7e3;
-    border-radius: 12px;
-    background: #fff;
-    box-shadow: 0 8px 28px rgb(31 47 38 / 5%);
-  }
-
-  .state-panel {
-    display: flex;
-    min-height: 220px;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: #748078;
-    font-size: 14px;
-
-    &.error-state {
-      color: #a3473f;
-    }
-  }
-
-  .empty-panel {
-    display: flex;
-    min-height: 320px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-
-    svg {
-      width: 44px;
-      color: #87958c;
-    }
-
-    h2 {
-      margin: 0;
-      color: #536058;
-      font-size: 15px;
-      font-weight: 560;
-    }
-  }
-
-  .submission-list {
-    overflow: hidden;
-
-    .submission-row {
-      display: grid;
-      width: 100%;
-      min-height: 84px;
-      grid-template-columns: minmax(240px, 1fr) 68px 18px;
-      align-items: center;
-      gap: 20px;
-      padding: 14px 22px;
-      border: 0;
-      border-bottom: 1px solid #edf0ed;
-      text-align: left;
-      background: #fff;
-
-      &:last-child {
-        border-bottom: 0;
-      }
-
-      &:hover {
-        background: #fafcfb;
-      }
-
-      .submission-main {
-        display: grid;
-        min-width: 0;
-        gap: 5px;
-
-        strong,
-        small {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        strong {
-          color: #202a24;
-          font-size: 14px;
-          font-weight: 600;
-        }
-
-        small {
-          color: #8a948d;
-          font-size: 12px;
-        }
-      }
-
-      .status-badge {
-        color: #786c4b;
-        font-size: 12px;
-
-        &.submitted {
-          color: #315f49;
-        }
-      }
-
-      .row-arrow {
-        color: #9da69f;
-        font-size: 22px;
-      }
-    }
-  }
-}
-</style>

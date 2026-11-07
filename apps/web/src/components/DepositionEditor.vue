@@ -20,10 +20,24 @@ const model = shallowRef(createQuestionnaire(current.value.profile, current.valu
 const tab = ref('files'),
   busy = ref(false),
   notice = ref(''),
-  error = ref(''),
   dirty = ref(false)
 const editable = computed(() => current.value.status === 'DRAFT')
 function configure() {
+  model.value.questionTitleLocation = 'left'
+  model.value.applyTheme({
+    isPanelless: true,
+    cssVariables: {
+      '--sjs-font-family': 'Arial, sans-serif',
+      '--sjs-font-size': '13px',
+      '--sjs-base-unit': '4px',
+      '--sjs-general-backcolor': '#ffffff',
+      '--sjs-general-backcolor-dim': '#ffffff',
+      '--sjs-primary-backcolor': '#659864',
+      '--sjs-corner-radius': '2px',
+      '--sjs-shadow-small': 'none',
+      '--sjs-shadow-inner': 'none',
+    },
+  })
   model.value.showNavigationButtons = false
   model.value.mode = editable.value ? 'edit' : 'display'
   model.value.onValueChanged.add(() => {
@@ -69,11 +83,8 @@ async function action(work: () => Promise<void>) {
   if (busy.value) return
   busy.value = true
   notice.value = ''
-  error.value = ''
   try {
     await work()
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
   } finally {
     busy.value = false
   }
@@ -95,13 +106,13 @@ const submit = () =>
     await saved()
     accept(await submitDeposition(current.value.id, current.value.revision))
     tab.value = 'checks'
-    notice.value = '本地提交完成，快照与导出包已固定。'
+    notice.value = '本地提交完成'
   })
 function upload(role: string, slot: number, event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  void action(async () => {
+  return action(async () => {
     await saved()
     accept(
       await uploadDepositionFile(
@@ -112,17 +123,15 @@ function upload(role: string, slot: number, event: Event) {
         file,
       ),
     )
-    const savedFile = fileOf(role, slot)
-    if (savedFile?.parseState === 'failed') error.value = savedFile.parseError ?? '解析失败'
-    else notice.value = '上传与解析完成；人工修改已保留。'
+    notice.value = '上传与解析完成'
     input.value = ''
   })
 }
 function reparse(fileId: number) {
-  void action(async () => {
+  return action(async () => {
     await saved()
     accept(await reparseDeposition(current.value.id, fileId, current.value.revision))
-    notice.value = '重解析完成；人工修改已保留。'
+    notice.value = '重新解析完成'
   })
 }
 const fileOf = (role: string, slot: number) =>
@@ -145,29 +154,49 @@ const checksReady = computed(
         )
       }),
 )
-const status = (state: string) =>
-  ({
-    succeeded: '执行完成',
-    failed: '执行失败',
-    unavailable: '未接入',
-    pending: '等待',
-    running: '运行中',
-  })[state] ?? state
+const states: Record<string, string> = {
+  succeeded: '执行完成',
+  failed: '执行失败',
+  unavailable: '未接入',
+  pending: '等待',
+  running: '运行中',
+}
+function status(state: string) {
+  const label = states[state]
+  if (label === undefined) throw new Error('Unknown processing state: ' + state)
+  return label
+}
+const pageTitle = computed(() => {
+  if (tab.value === 'files') return '文件上传 / File upload'
+  if (tab.value === 'checks') return '检查结果 / Validation'
+  if (tab.value === 'origins') return '字段来源'
+  const page = definition.value.pages.find((p) => p.name === tab.value)
+  if (!page) throw new Error('Unknown questionnaire page: ' + tab.value)
+  return page.title
+})
+const nextPage = () => {
+  const names = ['files', ...definition.value.pages.map((p) => p.name), 'checks', 'origins']
+  const index = names.indexOf(tab.value)
+  if (index + 1 < names.length) select(names[index + 1]!)
+}
 </script>
 <template>
   <article class="editor">
-    <header>
-      <p class="eyebrow">本地投递 DEMO · {{ current.code }} · 版本 {{ current.revision }}</p>
-      <h1>{{ current.title }}</h1>
-      <p>{{ definition.title }} · {{ editable ? '草稿' : '已本地提交' }}</p>
+    <header id="pane-north" class="workspace-pane">
+      <div class="masthead">
+        <img :src="'/onedep/images/onedep_logo.png'" alt="OneDep" height="45" />
+        <div>
+          <button @click="emit('back')">返回投递列表</button
+          ><img :src="'/onedep/images/wwpdb_logo.png'" alt="wwPDB" height="35" />
+        </div>
+      </div>
+      <div class="deposition-title">
+        OneDep Deposition: {{ current.code }} — {{ definition.title }}
+      </div>
     </header>
-    <p class="scope">
-      当前提交要求：文件角色、数量、可读取性、实体关联与图网格一致性。科学资料缺项保留为待补充；完整科学评估、CCD
-      配体核验和人工审校尚未接入。
-    </p>
-    <p v-if="error" role="alert" class="error">{{ error }}</p>
-    <p v-if="notice" role="status" class="notice">{{ notice }}</p>
-    <div class="toolbar">
+    <div class="toolbar workspace-pane">
+      <span>版本 {{ current.revision }} · {{ editable ? '草稿' : '已本地提交' }}</span>
+
       <button :disabled="busy || !editable" @click="save">
         保存草稿{{ dirty ? ' · 未保存' : '' }}</button
       ><button :disabled="busy || !editable" @click="check">检查当前版本</button
@@ -176,26 +205,31 @@ const status = (state: string) =>
       ><span v-if="busy">处理中…</span>
     </div>
     <div class="layout">
-      <nav aria-label="投递步骤">
-        <button :class="{ active: tab === 'files' }" @click="select('files')">文件与解析</button
-        ><button
-          v-for="page in definition.pages"
-          :key="page.name"
-          :class="{ active: tab === page.name }"
-          @click="select(page.name)"
-        >
-          {{ page.title }}</button
-        ><button :class="{ active: tab === 'checks' }" @click="select('checks')">检查结果</button
-        ><button :class="{ active: tab === 'origins' }" @click="select('origins')">字段来源</button>
+      <nav id="pane-west" class="workspace-pane" aria-label="投递步骤">
+        <div class="navigation-panel">
+          <h3 class="section-heading">Navigation</h3>
+          <button :class="{ active: tab === 'files' }" @click="select('files')">文件与解析</button
+          ><button
+            v-for="page in definition.pages"
+            :key="page.name"
+            :class="{ active: tab === page.name }"
+            @click="select(page.name)"
+          >
+            {{ page.title }}</button
+          ><button :class="{ active: tab === 'checks' }" @click="select('checks')">检查结果</button
+          ><button :class="{ active: tab === 'origins' }" @click="select('origins')">
+            字段来源
+          </button>
+        </div>
       </nav>
-      <div class="content" :aria-busy="busy">
+      <div id="pane-center" class="content workspace-pane" :aria-busy="busy">
+        <h3 class="section-heading">{{ pageTitle }}</h3>
+        <p v-if="notice" role="status" class="notice">{{ notice }}</p>
         <section v-if="tab === 'files'">
-          <h2>文件与解析</h2>
-          <p>每个槽位独立保存。替换文件产生新版本，之前的检查随即失效。</p>
           <div class="files">
             <template v-for="rule in definition.files" :key="rule.role"
               ><article v-for="slot in rule.max" :key="`${rule.role}-${slot}`" class="file">
-                <h3>{{ rule.title }} · 槽 {{ slot }}</h3>
+                <h3>{{ rule.title }}{{ rule.max > 1 ? ` · ${slot}` : '' }}</h3>
                 <template v-if="fileOf(rule.role, slot)"
                   ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
                     fileOf(rule.role, slot)!.originalName
@@ -245,7 +279,6 @@ const status = (state: string) =>
           </div>
         </section>
         <section v-else-if="tab === 'checks'">
-          <h2>检查结果</h2>
           <p v-if="editable && stale" class="error">
             答案或附件已变化，旧检查已失效。请检查当前版本。
           </p>
@@ -266,8 +299,6 @@ const status = (state: string) =>
           </article>
         </section>
         <section v-else-if="tab === 'origins'">
-          <h2>字段来源</h2>
-          <p>来源保留文件版本和原始行键；重新解析保留人工修改。</p>
           <table>
             <thead>
               <tr>
@@ -298,134 +329,170 @@ const status = (state: string) =>
           </table>
         </section>
         <SurveyComponent v-else :model="model" />
+        <button v-if="tab !== 'origins'" class="next" @click="nextPage">
+          Continue to next section ›
+        </button>
       </div>
     </div>
+    <footer id="pane-south" class="workspace-pane">OneDep · {{ current.code }}</footer>
   </article>
 </template>
 <style scoped>
 .editor {
-  color: #22332b;
-  max-width: 1280px;
-  margin: auto;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-rows: 91px 43px minmax(0, 1fr) 28px;
+  color: #222;
+  background: #ddd;
+  font:
+    12px Arial,
+    sans-serif;
+  gap: 1px;
 }
-.eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: #63766c;
+.editor * {
+  box-sizing: border-box;
 }
-h1 {
-  font-size: 25px;
-  line-height: 1.45;
-  margin: 8px 0;
+#pane-north {
+  padding: 8px 12px;
 }
-h2 {
-  font-size: 22px;
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-h3 {
+.masthead > div {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.deposition-title {
+  text-align: center;
+  color: #036;
+  margin-top: 6px;
   font-size: 16px;
-}
-.scope {
-  background: #edf3ee;
-  padding: 16px;
-  border-left: 3px solid #466953;
-  line-height: 1.7;
-  font-size: 14px;
 }
 .toolbar {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  padding: 16px 0;
-  flex-wrap: wrap;
+  padding: 5px 12px;
+}
+.toolbar > span:first-child {
+  margin-right: auto;
 }
 button {
-  border: 1px solid #bac8bf;
-  border-radius: 5px;
-  padding: 9px 14px;
-  background: white;
-  color: #274c38;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  padding: 5px 10px;
+  background: #f0f0f0;
+  color: #036;
+  font: inherit;
   cursor: pointer;
+}
+button:hover {
+  border-color: #036;
+  background: #e4eee4;
 }
 button:disabled {
   opacity: 0.45;
   cursor: default;
 }
 a {
-  color: #286545;
+  color: #036;
+  text-decoration: underline;
 }
 .layout {
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1px;
+  min-height: 0;
 }
-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-self: start;
-  position: sticky;
-  top: 80px;
+#pane-west {
+  padding: 10px;
+}
+.main_navigation {
+  padding: 4px;
 }
 nav button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
   text-align: left;
-  border-color: transparent;
+  padding: 7px 10px 7px 22px;
+  color: #222;
+  border-radius: 0;
 }
-.active {
-  background: #dceade;
-  font-weight: 600;
+nav button.active {
+  background: #e2eedd;
+  color: #036;
+}
+nav h3 {
+  margin-bottom: 8px;
 }
 .content {
-  background: white;
-  border: 1px solid #dae3dc;
-  border-radius: 10px;
   min-width: 0;
-  min-height: 600px;
+  overflow: auto;
+  padding: 10px;
 }
 .content > section {
-  padding: 24px;
+  padding: 8px 12px;
+}
+h3 {
+  font-size: 13px;
+  font-weight: normal;
 }
 .files {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  display: block;
 }
-.file,
-.check {
-  border: 1px solid #dce4de;
-  border-radius: 8px;
-  padding: 18px;
-  margin: 12px 0;
-  overflow-wrap: anywhere;
+.file {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  column-gap: 16px;
+  border-bottom: 1px solid #ddd;
+  padding: 14px 0;
+}
+.file > h3 {
+  grid-column: 1;
+  grid-row: 1 / span 20;
+  margin: 0;
+  color: #036;
+}
+.file > :not(h3) {
+  grid-column: 2;
+  margin: 4px 0;
+}
+.file > button {
+  justify-self: start;
 }
 .file label {
   display: block;
-  margin-top: 16px;
-  font-size: 13px;
 }
 .file input {
+  margin: 6px 0;
   display: block;
-  margin-top: 8px;
-  max-width: 100%;
+  font: inherit;
+}
+.check {
+  border-bottom: 1px solid #ddd;
+  padding: 8px 0;
 }
 .error {
-  color: #ae302c;
-  background: #fff2ef;
-  padding: 10px;
+  color: #a11;
   white-space: pre-wrap;
 }
 .notice {
-  color: #28613e;
-  background: #eef7ef;
-  padding: 10px;
+  color: #365f35;
+  padding: 4px 12px;
 }
 .missing {
-  color: #8e620b;
+  color: #715517;
 }
 dl {
   display: flex;
-  gap: 10px;
-  font-size: 12px;
-  margin: 6px 0;
+  gap: 12px;
 }
 dd {
   margin: 0;
@@ -433,27 +500,96 @@ dd {
 table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 12px;
 }
 th,
 td {
-  padding: 10px;
-  border-bottom: 1px solid #e5ebe6;
+  padding: 7px;
+  border-bottom: 1px solid #ddd;
   text-align: left;
   overflow-wrap: anywhere;
 }
 li {
-  margin: 10px 0;
-  line-height: 1.6;
+  margin: 6px 0;
 }
-@media (max-width: 850px) {
+.next {
+  margin: 16px 12px;
+}
+#pane-south {
+  padding: 5px 12px;
+  text-align: right;
+  color: #555;
+}
+:deep(.sd-root-modern) {
+  --sd-base-padding: 12px;
+  --sd-base-vertical-padding: 8px;
+}
+:deep(.sd-container-modern__title),
+:deep(.sd-page__title) {
+  display: none;
+}
+:deep(.sd-body.sd-body--static) {
+  max-width: none;
+  padding: 8px 12px;
+}
+:deep(.sd-question) {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 12px;
+}
+:deep(.sd-question__title) {
+  color: #036;
+  font-size: 13px;
+  font-weight: normal;
+}
+:deep(.sd-question__header--location--left) {
+  flex: 0 0 200px;
+  width: 200px;
+}
+:deep(.sd-question__content--left) {
+  max-width: 600px;
+}
+:deep(.sd-formbox) {
+  border: 1px solid #aaa;
+  border-radius: 2px;
+  box-shadow: none;
+}
+:deep(.sd-question__content) {
+  min-width: 0;
+}
+:deep(.sd-input) {
+  border: 1px solid #aaa;
+  background: white;
+  padding: 5px 7px;
+  min-height: 28px;
+  font:
+    13px Arial,
+    sans-serif;
+  border-radius: 2px;
+}
+:deep(.sd-comment) {
+  min-height: 80px;
+}
+:deep(.sd-btn) {
+  box-shadow: none;
+  border: 1px solid #aaa;
+  padding: 6px 12px;
+  font-weight: normal;
+}
+:deep(.sd-panel__title) {
+  font-size: 13px;
+  font-weight: normal;
+}
+@media (max-width: 800px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 180px minmax(0, 1fr);
   }
-  nav {
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
+  .file {
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+  .masthead > div {
+    gap: 8px;
+  }
+  .deposition-title {
+    font-size: 13px;
   }
 }
 </style>

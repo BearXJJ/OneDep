@@ -159,7 +159,7 @@ export function getProfileDefinition(id: DepositionProfile): ProfileDefinition {
               "论文 DOI",
               "_citation.pdbx_database_id_DOI",
               undefined,
-              { description: "DOI 手工记录；暂未接入期刊搜索。" },
+              {},
             ),
           ],
         },

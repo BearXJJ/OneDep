@@ -6,6 +6,7 @@ import 'element-plus/es/components/message/style/css'
 import App from './App.vue'
 import router from './router'
 import './assets/styles/global.less'
+import './assets/styles/onedep.less'
 
 const app = createApp(App)
 
