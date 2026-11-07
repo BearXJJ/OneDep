@@ -29,6 +29,12 @@ model Deposition {
   status      DepositionStatus   @default(DRAFT)
   creation    Json               @default("{}")
   metadata    Json               @default("{}")
+  profile     String?
+  revision    Int @default(0)
+  answers     Json @default("{}")
+  origins     Json @default("[]")
+  checks      Json @default("[]")
+  snapshots   Submission[]
   submitterId Int
   submitter   User               @relation(fields: [submitterId], references: [id], onDelete: Cascade)
   files       DepositionFile[]
@@ -44,6 +50,12 @@ model DepositionFile {
   depositionId Int
   deposition   Deposition         @relation(fields: [depositionId], references: [id], onDelete: Cascade)
   kind         DepositionFileKind
+  slot         Int @default(1)
+  revision     Int @default(1)
+  active       Boolean @default(true)
+  parseState   String @default("pending")
+  parseError   String?
+  parseResult  Json @default("{}")
   originalName String
   storedName   String
   mimeType     String
@@ -51,7 +63,18 @@ model DepositionFile {
   checksum     String
   createdAt    DateTime           @default(now())
 
-  @@unique([depositionId, kind])
+  @@unique([depositionId, kind, slot, revision])
+  @@index([depositionId, active])
+}
+
+model Submission {
+  id String @id
+  depositionId Int @unique
+  deposition Deposition @relation(fields: [depositionId], references: [id])
+  snapshot Json
+  exportName String
+  checksum String
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -78,4 +101,7 @@ enum DepositionStatus {
 enum DepositionFileKind {
   COORDINATE
   STRUCTURE_FACTOR
+  EM_MAP
+  EM_HALF_MAP
+  EM_IMAGE
 }

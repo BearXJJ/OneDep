@@ -36,37 +36,13 @@ const depositionFixture: DepositionDetail = {
     accessionCodes: ['PDB'],
   },
   files: [],
-  metadata: {
-    entry: { title: '', keywords: '', relatedDataDoi: '' },
-    contact: {
-      name: 'Alice',
-      email: 'alice@example.com',
-      orcid: '',
-      institution: '',
-      country: '',
-    },
-    authors: [],
-    citation: { status: 'UNPUBLISHED', title: '', journal: '', doi: '' },
-    macromolecule: {
-      name: '',
-      type: 'PROTEIN',
-      chainIds: '',
-      sequence: '',
-      sourceOrganism: '',
-      taxonomyId: '',
-      expressionHost: '',
-      mutations: '',
-    },
-    assembly: { oligomericState: '', description: '', evidence: '' },
-    xray: {
-      crystallizationMethod: '',
-      crystallizationPh: '',
-      crystallizationTemperature: '',
-      spaceGroup: '',
-      resolution: '',
-    },
-    release: { status: 'HOLD_FOR_PUBLICATION', holdUntil: '', termsAccepted: false },
-  },
+  profile: 'XRAY',
+  definitionRevision: 2,
+  revision: 0,
+  answers: {},
+  origins: [],
+  checks: [],
+  submission: null,
 }
 
 it('shows only public roles and opens the workspace after registration', async () => {
@@ -254,8 +230,8 @@ it('opens an existing deposition without cloning the Vue proxy directly', async 
 
   const fetchMock = vi.fn<(path: string) => Promise<unknown>>(async (path) => {
     if (path === '/api/depositions') {
-      const { metadata, files, ...summary } = depositionFixture
-      void metadata
+      const { answers, files, ...summary } = depositionFixture
+      void answers
       void files
       return { ok: true, json: async () => [summary] }
     }
@@ -274,22 +250,11 @@ it('opens an existing deposition without cloning the Vue proxy directly', async 
   await wrapper.find('.submission-row').trigger('click')
   await flushPromises()
 
-  expect(wrapper.find('.deposition-editor').exists()).toBe(true)
-  expect(wrapper.find('.editor-header').text()).toContain('D_6248357552')
-  expect(wrapper.findAll('.form-section')).toHaveLength(7)
-  expect(wrapper.text()).toContain('坐标文件')
+  expect(wrapper.find('.editor').exists()).toBe(true)
+  expect(wrapper.find('.editor header').text()).toContain('D_6248357552')
+  expect(wrapper.text()).toContain('坐标模型')
   expect(wrapper.text()).toContain('结构因子')
-
-  const sectionTops = [-600, -260, 80, 420, 760, 1100, 1440]
-  wrapper.findAll('.form-section').forEach((section, index) => {
-    vi.spyOn(section.element, 'getBoundingClientRect').mockReturnValue({
-      top: sectionTops[index],
-    } as DOMRect)
-  })
-  window.dispatchEvent(new Event('scroll'))
-  await flushPromises()
-
-  expect(wrapper.findAll('.section-nav button')[2]!.classes()).toContain('active')
+  expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
   wrapper.unmount()
 })
 
@@ -349,7 +314,7 @@ it('selects an experimental method before creating a deposition', async () => {
       }),
     }),
   )
-  expect(wrapper.find('.deposition-editor').exists()).toBe(true)
+  expect(wrapper.find('.editor').exists()).toBe(true)
   wrapper.unmount()
 })
 

@@ -43,8 +43,10 @@
       </div>
     </template>
 
+    <p v-if="selectingMethod && error" role="alert" class="state-panel error-state">{{ error }}</p>
+
     <DepositionMethodSelector
-      v-else-if="selectingMethod"
+      v-if="selectingMethod"
       :submitting="creating"
       @confirm="createDraft"
     />

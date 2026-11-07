@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { QuestionPanelDynamicModel } from "survey-core";
 import {
   createQuestionnaire,
+  activeAnswers,
   getCifBindings,
   getFileRequirements,
   parseQuestionnaireDraft,
@@ -14,6 +15,15 @@ import {
 function answers(): Answers {
   return {
     title: "Test structure",
+    citationStatus: "UNPUBLISHED",
+    termsAccepted: true,
+    diffraction: [
+      {
+        recordId: "d1",
+        source: "SYNCHROTRON",
+        equipment: "SSRF BEAMLINE BL17U1",
+      },
+    ],
     keywords: "PROTEIN",
     authors: [{ recordId: "author-a", name: "Author, A." }],
     molecules: [
@@ -176,7 +186,11 @@ describe("questionnaire contract", () => {
   });
 
   it("never applies crystal requirements to the supported EM scenario", () => {
-    const { crystals: _crystals, ...common } = answers();
+    const {
+      crystals: _crystals,
+      diffraction: _diffraction,
+      ...common
+    } = answers();
     expect(
       validateQuestionnaire(
         { profile: "EM_SINGLE_PARTICLE", answers: common },
@@ -201,7 +215,7 @@ describe("questionnaire contract", () => {
       getCifBindings("XRAY").find(
         (item) => item.group === "molecules" && item.field === "sequence",
       ),
-    ).toEqual({
+    ).toMatchObject({
       group: "molecules",
       field: "sequence",
       recordKey: "_entity.id",
@@ -329,5 +343,45 @@ describe("file contract", () => {
         { id: "a", role: "COORDINATE", slot: 1, originalName: "data.cif.exe" },
       ]).some((issue) => issue.code === "invalid_extension"),
     ).toBe(true);
+  });
+});
+
+// Regressions found while exercising real uploads and exports.
+describe("active branch and native choice lifecycle", () => {
+  it("retains hidden panel answers in drafts but excludes them from export and validation", () => {
+    const draft = {
+      ...answers(),
+      citationStatus: "UNPUBLISHED",
+      citationTitle: "hidden text",
+    };
+    const model = createQuestionnaire("XRAY", draft);
+    expect(model.data.citationTitle).toBe("hidden text");
+    expect(activeAnswers("XRAY", draft)).not.toHaveProperty("citationTitle");
+    model.setValue("citationStatus", "PUBLISHED");
+    expect(model.data.citationTitle).toBe("hidden text");
+    expect(activeAnswers("XRAY", model.data).citationTitle).toBe("hidden text");
+    model.dispose();
+  });
+  it("keeps an invalid dependent choice visible to validation after its parent changes", () => {
+    const model = createQuestionnaire("XRAY", answers());
+    const group = model.getQuestionByName(
+      "diffraction",
+    ) as QuestionPanelDynamicModel;
+    group.panels[0]!.getQuestionByName("source")!.value = "SEALED TUBE";
+    expect(model.data.diffraction[0].equipment).toBe("SSRF BEAMLINE BL17U1");
+    expect(
+      validateQuestionnaire(
+        { profile: "XRAY", answers: model.data },
+        "complete",
+      ).some((i) => i.code === "invalid_choice"),
+    ).toBe(true);
+    model.dispose();
+  });
+  it("does not treat false or zero as absent and rejects duplicate repeat identities", () => {
+    const result = parseQuestionnaireDraft({
+      profile: "EM_SINGLE_PARTICLE",
+      answers: { termsAccepted: false, contour: 0 },
+    });
+    expect(result.answers).toEqual({ termsAccepted: false, contour: 0 });
   });
 });

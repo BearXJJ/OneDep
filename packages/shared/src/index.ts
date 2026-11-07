@@ -1,5 +1,11 @@
-export type UserRole = 'SUBMITTER' | 'REVIEWER' | 'ADMIN';
-export type RegistrationRole = Exclude<UserRole, 'ADMIN'>;
+import type {
+  Answers,
+  CheckRun,
+  ValueOrigin,
+  DepositionProfile,
+} from "./deposition/index.js";
+export type UserRole = "SUBMITTER" | "REVIEWER" | "ADMIN";
+export type RegistrationRole = Exclude<UserRole, "ADMIN">;
 
 export interface AuthUser {
   id: number;
@@ -15,14 +21,19 @@ export interface AdminUser extends AuthUser {
   createdAt: string;
 }
 
-export type DepositionStatus = 'DRAFT' | 'SUBMITTED';
-export type DepositionMethod = 'XRAY' | 'EM' | 'NMR' | 'NEUTRON' | 'EC' | 'SSNMR' | 'FIBER';
-export type DepositionFileKind = 'COORDINATE' | 'STRUCTURE_FACTOR';
-export type CitationStatus = 'UNPUBLISHED' | 'IN_PREPARATION' | 'SUBMITTED' | 'PUBLISHED';
-export type ReleaseStatus = 'IMMEDIATE' | 'HOLD_FOR_PUBLICATION' | 'HOLD_UNTIL_DATE';
-export type EmSubtype = 'HELICAL' | 'SINGLE_PARTICLE' | 'SUBTOMOGRAM' | 'TOMOGRAPHY';
-export type AccessionCode = 'PDB' | 'EMDB' | 'BMRB';
-export type EmMapStatus = 'NEW_MAP' | 'STRUCTURE_FACTORS_ONLY' | 'PREVIOUS';
+export type DepositionStatus = "DRAFT" | "SUBMITTED";
+export type DepositionMethod =
+  "XRAY" | "EM" | "NMR" | "NEUTRON" | "EC" | "SSNMR" | "FIBER";
+export type DepositionFileKind =
+  "COORDINATE" | "STRUCTURE_FACTOR" | "EM_MAP" | "EM_HALF_MAP" | "EM_IMAGE";
+export type CitationStatus =
+  "UNPUBLISHED" | "IN_PREPARATION" | "SUBMITTED" | "PUBLISHED";
+export type ReleaseStatus =
+  "IMMEDIATE" | "HOLD_FOR_PUBLICATION" | "HOLD_UNTIL_DATE";
+export type EmSubtype =
+  "HELICAL" | "SINGLE_PARTICLE" | "SUBTOMOGRAM" | "TOMOGRAPHY";
+export type AccessionCode = "PDB" | "EMDB" | "BMRB";
+export type EmMapStatus = "NEW_MAP" | "STRUCTURE_FACTORS_ONLY" | "PREVIOUS";
 
 export interface DepositionCreationOptions {
   methods: DepositionMethod[];
@@ -88,6 +99,12 @@ export interface DepositionMetadata {
 export interface DepositionFile {
   id: number;
   kind: DepositionFileKind;
+  slot: number;
+  revision: number;
+  parseState: string;
+  parseError: string | null;
+  facts: unknown;
+  conflicts: string[];
   originalName: string;
   mimeType: string;
   size: number;
@@ -116,6 +133,12 @@ export interface DepositionSummary {
 
 export interface DepositionDetail extends DepositionSummary {
   creation: DepositionCreationOptions;
-  metadata: DepositionMetadata;
+  profile: DepositionProfile;
+  definitionRevision: number;
+  revision: number;
+  answers: Answers;
+  origins: ValueOrigin[];
+  checks: CheckRun[];
+  submission: { id: string; checksum: string } | null;
   files: DepositionFile[];
 }

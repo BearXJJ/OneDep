@@ -2,66 +2,50 @@ import type {
   DepositionCreationOptions,
   DepositionDetail,
   DepositionFileKind,
-  DepositionMetadata,
   DepositionSummary,
 } from '@onedep/shared'
-
-// 统一解析投递接口错误，使页面只处理业务状态。
+import type { Answers } from '@onedep/shared/deposition'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/depositions${path}`, init)
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { message?: string | string[] }
-    const message = Array.isArray(body.message) ? body.message[0] : body.message
-    throw new Error(message || '请求失败，请稍后再试')
+    const body = (await response.json()) as { message?: string | string[] }
+    throw new Error(
+      Array.isArray(body.message) ? body.message.join('；') : (body.message ?? '请求失败'),
+    )
   }
   return (response.status === 204 ? undefined : await response.json()) as T
 }
-
-export function listDepositions(): Promise<DepositionSummary[]> {
-  return request<DepositionSummary[]>('')
-}
-
-export function createDeposition(options: DepositionCreationOptions): Promise<DepositionDetail> {
-  return request<DepositionDetail>('', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options),
-  })
-}
-
-export function getDeposition(id: number): Promise<DepositionDetail> {
-  return request<DepositionDetail>(`/${id}`)
-}
-
-export function saveDeposition(
-  id: number,
-  metadata: DepositionMetadata,
-): Promise<DepositionDetail> {
-  return request<DepositionDetail>(`/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(metadata),
-  })
-}
-
-export function submitDeposition(id: number): Promise<DepositionDetail> {
-  return request<DepositionDetail>(`/${id}/submit`, { method: 'POST' })
-}
-
+const json = (data: unknown) => ({
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(data),
+})
+export const listDepositions = () => request<DepositionSummary[]>('')
+export const createDeposition = (options: DepositionCreationOptions) =>
+  request<DepositionDetail>('', { method: 'POST', ...json(options) })
+export const getDeposition = (id: number) => request<DepositionDetail>(`/${id}`)
+export const saveDeposition = (id: number, revision: number, answers: Answers) =>
+  request<DepositionDetail>(`/${id}`, { method: 'PATCH', ...json({ revision, answers }) })
+export const submitDeposition = (id: number, revision: number) =>
+  request<DepositionDetail>(`/${id}/submit`, { method: 'POST', ...json({ revision }) })
+export const checkDeposition = (id: number, revision: number) =>
+  request<DepositionDetail>(`/${id}/check`, { method: 'POST', ...json({ revision }) })
+export const reparseDeposition = (id: number, fileId: number, revision: number) =>
+  request<DepositionDetail>(`/${id}/reparse/${fileId}`, { method: 'POST', ...json({ revision }) })
 export function uploadDepositionFile(
   id: number,
   kind: DepositionFileKind,
+  slot: number,
+  revision: number,
   file: File,
-): Promise<DepositionDetail> {
+) {
   const body = new FormData()
   body.append('file', file)
-  return request<DepositionDetail>(`/${id}/files/${kind}`, { method: 'POST', body })
+  return request<DepositionDetail>(`/${id}/files/${kind}/${slot}?revision=${revision}`, {
+    method: 'POST',
+    body,
+  })
 }
-
-export function removeDepositionFile(id: number, fileId: number): Promise<void> {
-  return request<void>(`/${id}/files/${fileId}`, { method: 'DELETE' })
-}
-
-export function depositionFileUrl(id: number, fileId: number): string {
-  return `/api/depositions/${id}/files/${fileId}`
-}
+export const removeDepositionFile = (id: number, fileId: number, revision: number) =>
+  request<void>(`/${id}/files/${fileId}?revision=${revision}`, { method: 'DELETE' })
+export const depositionFileUrl = (id: number, fileId: number) =>
+  `/api/depositions/${id}/files/${fileId}`

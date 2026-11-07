@@ -1,18 +1,24 @@
-import { Model, QuestionPanelDynamicModel, type Question } from "survey-core";
+import {
+  Model,
+  QuestionPanelDynamicModel,
+  type Question as SurveyQuestion,
+} from "survey-core";
 import { z } from "zod";
 import {
-  getQuestionnaireDefinition,
+  getProfileDefinition,
   profiles,
-  type CifBinding,
   type DepositionProfile,
-  type FieldDefinition,
 } from "./definition.js";
-
-export type AnswerRecord = {
-  recordId: string;
-  [field: string]: string | number;
-};
-export type Answers = Record<string, string | number | AnswerRecord[]>;
+import type {
+  Element,
+  Question,
+  Answer,
+  AnswerRecord,
+  Address,
+  ValueOrigin,
+} from "./types.js";
+export type { AnswerRecord } from "./types.js";
+export type Answers = Record<string, Answer>;
 export interface QuestionnaireDraft {
   profile: DepositionProfile;
   answers: Answers;
@@ -23,107 +29,118 @@ export interface ContractIssue {
   message: string;
 }
 export type ValidationMode = "draft" | "complete";
-
-const envelopeSchema = z.strictObject({
-  profile: z.enum(profiles),
-  answers: z.unknown(),
-});
-
-// Zod guards transport shape and rejects unknown fields. SurveyJS owns business
-// validation (required, formats, ranges); those rules are never duplicated here.
-function fieldShape(field: FieldDefinition): z.ZodType {
+function fieldShape(field: Question): z.ZodType {
   if (field.name === "recordId") return z.string().min(1);
-  return (field.inputType === "number" ? z.number() : z.string()).optional();
+  switch (field.type) {
+    case "text":
+      return (
+        field.inputType === "number" ? z.number() : z.string()
+      ).optional();
+    case "comment":
+      return z.string().optional();
+    case "boolean":
+      return z.boolean().optional();
+    case "dropdown":
+    case "radiogroup":
+      return z.union([z.string(), z.number()]).optional();
+    case "checkbox":
+      return z.array(z.union([z.string(), z.number()])).optional();
+    default:
+      throw new Error("Unknown question type");
+  }
 }
-function answersSchema(profile: DepositionProfile) {
-  const shape: Record<string, z.ZodType> = {};
-  for (const page of getQuestionnaireDefinition(profile).pages) {
-    for (const question of page.elements) {
-      if (question.type !== "paneldynamic") {
-        shape[question.name] = fieldShape(question);
-        continue;
-      }
-      const rowShape = Object.fromEntries(
-        question.templateElements.map((field) => [
-          field.name,
-          fieldShape(field),
-        ]),
-      );
-      shape[question.name] = z
-        .array(z.strictObject(rowShape))
-        .superRefine((rows, context) => {
-          const seen = new Set<string>();
-          rows.forEach((row, index) => {
-            const id = row.recordId as string;
-            if (seen.has(id))
-              context.addIssue({
+function shape(elements: Element[]): Record<string, z.ZodType> {
+  const result: Record<string, z.ZodType> = {};
+  for (const field of elements) {
+    if (field.type === "panel") Object.assign(result, shape(field.elements));
+    else if (field.type === "paneldynamic")
+      result[field.name] = z
+        .array(z.strictObject(shape(field.templateElements)))
+        .superRefine((rows, ctx) => {
+          const ids = new Set();
+          rows.forEach((row, i) => {
+            if (ids.has(row.recordId))
+              ctx.addIssue({
                 code: "custom",
-                path: [index, "recordId"],
+                path: [i, "recordId"],
                 message: "Duplicate record ID.",
               });
-            seen.add(id);
+            ids.add(row.recordId);
           });
         })
         .optional();
-    }
+    else result[field.name] = fieldShape(field);
   }
-  return z.strictObject(shape);
+  return result;
 }
 export function parseQuestionnaireDraft(input: unknown): QuestionnaireDraft {
-  const envelope = envelopeSchema.parse(input);
-  return z
-    .strictObject({
-      profile: z.literal(envelope.profile),
-      answers: answersSchema(envelope.profile),
-    })
-    .parse(input) as QuestionnaireDraft;
+  const envelope = z
+    .strictObject({ profile: z.enum(profiles), answers: z.unknown() })
+    .parse(input);
+  return {
+    ...envelope,
+    answers: z
+      .strictObject(
+        shape(
+          getProfileDefinition(envelope.profile).pages.flatMap(
+            (p) => p.elements,
+          ),
+        ),
+      )
+      .parse(envelope.answers) as Answers,
+  };
 }
-
+function native(elements: Element[], mode: ValidationMode): unknown[] {
+  return elements.map((element) => {
+    if (element.type === "panel")
+      return { ...element, elements: native(element.elements, mode) };
+    const { x: _, ...field } = element;
+    if (element.type === "paneldynamic")
+      return {
+        ...field,
+        minPanelCount: 0,
+        panelCount: 0,
+        isRequired: mode === "complete" && !!element.minPanelCount,
+        templateElements: native(element.templateElements, mode),
+      };
+    return {
+      ...field,
+      ...(mode === "draft"
+        ? {
+            isRequired: false,
+            requiredIf: undefined,
+            validators: element.validators?.filter(
+              (v) => v.type !== "expression",
+            ),
+          }
+        : {}),
+    };
+  });
+}
 export function createQuestionnaire(
   profile: DepositionProfile,
   answers: Answers = {},
   mode: ValidationMode = "complete",
 ): Model {
   const draft = parseQuestionnaireDraft({ profile, answers });
-  const definition = getQuestionnaireDefinition(draft.profile);
   const model = new Model({
     clearInvisibleValues: "none",
     showQuestionNumbers: "off",
-    pages: definition.pages.map((page) => ({
+    checkErrorsMode: "onComplete",
+    showCompletedPage: false,
+    pages: getProfileDefinition(profile).pages.map((page) => ({
       ...page,
-      elements: page.elements.map((question) => {
-        const { cif: _cif, ...properties } = question;
-        if (question.type !== "paneldynamic") {
-          return {
-            ...properties,
-            isRequired: mode === "complete" && question.isRequired,
-          };
-        }
-        return {
-          ...properties,
-          panelCount: 0,
-          isRequired: mode === "complete" && question.isRequired,
-          templateElements: question.templateElements.map((field) => {
-            const { cif: _binding, ...fieldProperties } = field;
-            return {
-              ...fieldProperties,
-              isRequired: mode === "complete" && field.isRequired,
-            };
-          }),
-        };
-      }),
+      elements: native(page.elements, mode),
     })),
   });
+  model.keepIncorrectValues = true;
   model.data = structuredClone(draft.answers);
-  model.onDynamicPanelAdded.add((_sender, event) => {
-    const identity = event.panel.getQuestionByName("recordId")!;
-    if (!identity.value) identity.value = globalThis.crypto.randomUUID();
+  model.onDynamicPanelAdded.add((_, e) => {
+    const q = e.panel.getQuestionByName("recordId");
+    if (q && !q.value) q.value = globalThis.crypto.randomUUID();
   });
   return model;
 }
-
-// "complete" covers this configured field slice, not every deposition page or
-// scientific validation. Errors use answer paths so both API and UI can locate them.
 export function validateQuestionnaire(
   input: unknown,
   mode: ValidationMode = "draft",
@@ -131,69 +148,179 @@ export function validateQuestionnaire(
   let draft: QuestionnaireDraft;
   try {
     draft = parseQuestionnaireDraft(input);
-  } catch (error) {
-    if (!(error instanceof z.ZodError)) throw error;
-    return error.issues.map((issue) => ({
-      path: issue.path.map((part) =>
-        typeof part === "symbol" ? String(part) : part,
-      ),
-      code: issue.code,
-      message: issue.message,
+  } catch (e) {
+    if (!(e instanceof z.ZodError)) throw e;
+    return e.issues.map((i) => ({
+      path: i.path.map((p) => (typeof p === "symbol" ? String(p) : p)),
+      code: i.code,
+      message: i.message,
     }));
   }
   const model = createQuestionnaire(draft.profile, draft.answers, mode);
   try {
     model.validate();
     const issues: ContractIssue[] = [];
-    function collect(question: Question, path: Array<string | number>) {
+    function collect(q: SurveyQuestion, path: (string | number)[]) {
+      if (!q.isVisible || !q.isParentVisible) return;
       issues.push(
-        ...question.errors.map((error) => ({
+        ...q.errors.map((e) => ({
           path: ["answers", ...path],
-          code: error.getErrorType(),
-          message: error.getText(),
+          code: e.getErrorType(),
+          message: `${q.title}: ${e.getText()}`,
         })),
       );
-      if (question instanceof QuestionPanelDynamicModel) {
-        question.panels.forEach((panel, index) => {
-          panel.questions.forEach((child) =>
-            collect(child, [...path, index, child.name]),
-          );
-        });
+      if (q instanceof QuestionPanelDynamicModel)
+        q.panels.forEach((p, i) =>
+          p.questions.forEach((c) => collect(c, [...path, i, c.name])),
+        );
+    }
+    model.getAllQuestions().forEach((q) => collect(q, [q.name]));
+    // Choice visibility is a native SurveyJS expression. Keep invalid old values,
+    // but reject them at validation instead of letting SurveyJS clear them.
+    function choices(q: SurveyQuestion, path: (string | number)[]) {
+      if (!q.isVisible || !q.isParentVisible) return;
+      if (q instanceof QuestionPanelDynamicModel) {
+        q.panels.forEach((p, i) =>
+          p.questions.forEach((c) => choices(c, [...path, i, c.name])),
+        );
+        return;
+      }
+      const select = q as SurveyQuestion & {
+        visibleChoices?: { value: unknown }[];
+      };
+      if (select.visibleChoices && q.value !== undefined && q.value !== null) {
+        const values = Array.isArray(q.value) ? q.value : [q.value];
+        if (
+          values.some((v) => !select.visibleChoices!.some((c) => c.value === v))
+        )
+          issues.push({
+            path: ["answers", ...path],
+            code: "invalid_choice",
+            message: `${q.title}: 当前选项已失效，请重新选择。`,
+          });
       }
     }
-    model
-      .getAllQuestions()
-      .forEach((question) => collect(question, [question.name]));
+    model.getAllQuestions().forEach((q) => choices(q, [q.name]));
     return issues;
   } finally {
     model.dispose();
   }
 }
-
-export interface FieldBinding extends CifBinding {
+export function activeAnswers(
+  profile: DepositionProfile,
+  answers: Answers,
+): Answers {
+  const model = createQuestionnaire(profile, answers);
+  function read(q: SurveyQuestion): Answer | undefined {
+    if ((!q.isVisible || !q.isParentVisible) && q.name !== "recordId") return;
+    if (q instanceof QuestionPanelDynamicModel)
+      return q.panels.map(
+        (p) =>
+          Object.fromEntries(
+            p.questions
+              .map((c) => [c.name, read(c)])
+              .filter(([, v]) => v !== undefined),
+          ) as AnswerRecord,
+      );
+    return q.value as Answer | undefined;
+  }
+  try {
+    return Object.fromEntries(
+      model
+        .getAllQuestions()
+        .map((q) => [q.name, read(q)])
+        .filter(([, v]) => v !== undefined),
+    ) as Answers;
+  } finally {
+    model.dispose();
+  }
+}
+export interface FieldBinding {
   field: string;
   group?: string;
-  // Resolve through the parser's recordId -> original CIF key mapping, not index.
   recordKey?: string;
+  key?: string;
+  tag: string;
+  readOnly?: boolean;
+  inputType?: string;
+  direction: string;
 }
 export function getCifBindings(profile: DepositionProfile): FieldBinding[] {
-  return getQuestionnaireDefinition(profile).pages.flatMap((page) =>
-    page.elements.flatMap((question) => {
-      if (question.type !== "paneldynamic") {
-        return question.cif ? [{ field: question.name, ...question.cif }] : [];
-      }
-      return question.templateElements.flatMap((field) =>
-        field.cif
-          ? [
-              {
-                field: field.name,
-                group: question.name,
-                recordKey: question.cif.key,
-                ...field.cif,
+  const result: FieldBinding[] = [];
+  function walk(elements: Element[], group?: string, recordKey?: string) {
+    for (const el of elements) {
+      if (el.type === "panel") walk(el.elements, group, recordKey);
+      else if (el.type === "paneldynamic")
+        walk(el.templateElements, el.name, el.x.bindings?.[0]?.key);
+      else
+        for (const b of el.x.bindings ?? [])
+          result.push({
+            field: el.name,
+            group,
+            recordKey,
+            key: b.rowKey,
+            tag: b.tag,
+            readOnly: el.readOnly,
+            inputType: el.type === "text" ? el.inputType : undefined,
+            direction: b.direction,
+          });
+    }
+  }
+  walk(getProfileDefinition(profile).pages.flatMap((p) => p.elements));
+  return result;
+}
+export function addressKey(a: Address): string {
+  return [a.collection ?? "", a.recordId ?? "", a.field].join("/");
+}
+export function flattenAnswers(
+  answers: Answers,
+): { address: Address; value: Answer }[] {
+  return Object.entries(answers).flatMap(([field, value]) =>
+    Array.isArray(value) && value.length > 0 && typeof value[0] === "object"
+      ? (value as AnswerRecord[]).flatMap((row) =>
+          Object.entries(row)
+            .filter(([k]) => k !== "recordId")
+            .map(([key, v]) => ({
+              address: {
+                collection: field,
+                recordId: row.recordId,
+                field: key,
               },
-            ]
-          : [],
-      );
-    }),
+              value: v,
+            })),
+        )
+      : [{ address: { field }, value }],
   );
+}
+export function userOrigins(
+  previous: Answers,
+  next: Answers,
+  origins: ValueOrigin[],
+): ValueOrigin[] {
+  const before = new Map(
+    flattenAnswers(previous).map((v) => [
+      addressKey(v.address),
+      JSON.stringify(v.value),
+    ]),
+  );
+  const after = new Map(
+    flattenAnswers(next).map((v) => [addressKey(v.address), v]),
+  );
+  const result = new Map(origins.map((o) => [addressKey(o.address), o]));
+  for (const [key, value] of after)
+    if (before.get(key) !== JSON.stringify(value.value))
+      result.set(key, {
+        ...result.get(key),
+        address: value.address,
+        source: "user",
+      });
+  for (const [key] of before)
+    if (!after.has(key))
+      result.set(key, {
+        address: result.get(key)?.address ?? {
+          field: key.split("/").slice(-1)[0]!,
+        },
+        source: "user",
+      });
+  return [...result.values()];
 }

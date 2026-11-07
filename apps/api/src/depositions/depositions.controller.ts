@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Req,
+  Query,
   StreamableFile,
   UploadedFile,
   UseInterceptors,
@@ -54,7 +55,7 @@ export class DepositionsController {
     return this.depositions.update(id, request.authUser, body);
   }
 
-  @Post(':id/files/:kind')
+  @Post(':id/files/:kind/:slot')
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { files: 1, fileSize: 100 * 1024 * 1024 },
@@ -63,10 +64,19 @@ export class DepositionsController {
   uploadFile(
     @Param('id', ParseIntPipe) id: number,
     @Param('kind') kind: string,
+    @Param('slot', ParseIntPipe) slot: number,
+    @Query('revision', ParseIntPipe) revision: number,
     @UploadedFile() file: UploadedFileData | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.depositions.uploadFile(id, request.authUser, kind, file);
+    return this.depositions.uploadFile(
+      id,
+      request.authUser,
+      kind,
+      slot,
+      revision,
+      file,
+    );
   }
 
   @Get(':id/files/:fileId')
@@ -87,21 +97,54 @@ export class DepositionsController {
     });
   }
 
+  @Post(':id/reparse/:fileId')
+  reparse(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @Body('revision') revision: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.depositions.reparse(id, fileId, request.authUser, revision);
+  }
+
+  @Post(':id/check')
+  check(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('revision') revision: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.depositions.check(id, request.authUser, revision);
+  }
+
+  @Get(':id/export')
+  async export(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const result = await this.depositions.export(id, request.authUser);
+    return new StreamableFile(result.content, {
+      type: 'application/zip',
+      disposition: `attachment; filename="${result.name}"`,
+    });
+  }
+
   @Delete(':id/files/:fileId')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeFile(
+    @Query('revision', ParseIntPipe) revision: number,
     @Param('id', ParseIntPipe) id: number,
     @Param('fileId', ParseIntPipe) fileId: number,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.depositions.removeFile(id, fileId, request.authUser);
+    return this.depositions.removeFile(id, fileId, request.authUser, revision);
   }
 
   @Post(':id/submit')
   submit(
+    @Body('revision') revision: number,
     @Param('id', ParseIntPipe) id: number,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.depositions.submit(id, request.authUser);
+    return this.depositions.submit(id, request.authUser, revision);
   }
 }

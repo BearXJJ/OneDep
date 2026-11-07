@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { profiles, type DepositionProfile } from "./definition.js";
+import {
+  profiles,
+  getProfileDefinition,
+  type DepositionProfile,
+} from "./definition.js";
 import type { ContractIssue, ValidationMode } from "./questionnaire.js";
 
 export const fileRoles = [
@@ -15,33 +19,14 @@ export interface FileRequirement {
   count: number;
   extensions: readonly string[];
 }
-const coordinate: FileRequirement = {
-  role: "COORDINATE",
-  count: 1,
-  extensions: [".cif", ".mmcif", ".pdb"],
-};
-const requirements: Record<DepositionProfile, readonly FileRequirement[]> = {
-  XRAY: [
-    coordinate,
-    {
-      role: "STRUCTURE_FACTOR",
-      count: 1,
-      extensions: [".cif", ".mmcif", ".mtz"],
-    },
-  ],
-  EM_SINGLE_PARTICLE: [
-    coordinate,
-    { role: "EM_MAP", count: 1, extensions: [".map", ".map.gz"] },
-    // This supported scenario has one pair, identified by slots 1 and 2.
-    { role: "EM_HALF_MAP", count: 2, extensions: [".map", ".map.gz"] },
-    { role: "EM_IMAGE", count: 1, extensions: [".png"] },
-  ],
-};
 export function getFileRequirements(
   profile: DepositionProfile,
 ): readonly FileRequirement[] {
-  z.enum(profiles).parse(profile);
-  return structuredClone(requirements[profile]);
+  return getProfileDefinition(profile).files.map((f) => ({
+    role: f.role as FileRole,
+    count: f.max,
+    extensions: f.extensions,
+  }));
 }
 const manifestSchema = z.array(
   z.strictObject({
