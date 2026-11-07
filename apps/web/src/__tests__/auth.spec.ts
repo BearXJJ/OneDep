@@ -252,6 +252,11 @@ it('opens an existing deposition without cloning the Vue proxy directly', async 
 
   expect(wrapper.find('.editor').exists()).toBe(true)
   expect(wrapper.find('.editor header').text()).toContain('D_6248357552')
+  await wrapper
+    .findAll('.tree-item')
+    .find((node) => node.text() === 'Re-upload files')!
+    .trigger('click')
+  await flushPromises()
   expect(wrapper.text()).toContain('坐标模型')
   expect(wrapper.text()).toContain('结构因子')
   expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
@@ -504,8 +509,17 @@ it('lets an administrator add accounts, change roles, and confirm deletion', asy
 it('propagates session server failures without treating them as logout', async () => {
   setActivePinia(createPinia())
   const auth = useAuthStore()
-  auth.user = { id: 1, name: 'Alice', email: 'alice@example.test', ...emptyProfile, role: 'SUBMITTER' }
-  vi.stubGlobal('fetch', vi.fn(async () => new Response('Redis unavailable', { status: 503 })))
+  auth.user = {
+    id: 1,
+    name: 'Alice',
+    email: 'alice@example.test',
+    ...emptyProfile,
+    role: 'SUBMITTER',
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('Redis unavailable', { status: 503 })),
+  )
   await expect(auth.restore()).rejects.toThrow('Redis unavailable')
   expect(auth.initialized).toBe(false)
   expect(auth.user.email).toBe('alice@example.test')

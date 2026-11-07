@@ -1,54 +1,109 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
+import { QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
+import { ArrowRight, Back, Download, Refresh, Delete, InfoFilled } from '@element-plus/icons-vue'
 import 'survey-core/survey-core.css'
 import type { DepositionDetail, DepositionFileKind } from '@onedep/shared'
-import { createQuestionnaire, getProfileDefinition, type Answers } from '@onedep/shared/deposition'
+import {
+  createQuestionnaire,
+  getProfileDefinition,
+  getNavigation,
+  type Answers,
+  type AnswerRecord,
+  type Element,
+} from '@onedep/shared/deposition'
 import {
   checkDeposition,
   depositionFileUrl,
+  getDeposition,
   reparseDeposition,
+  removeDepositionFile,
   saveDeposition,
   submitDeposition,
   uploadDepositionFile,
 } from '@/data/depositions'
+import {
+  depositionNavigation,
+  type DepositionNavItem,
+  type PageProgress,
+} from '@/data/deposition-navigation'
+import DepositionNavigation from './DepositionNavigation.vue'
+import { useAuthStore } from '@/stores/auth'
 const props = defineProps<{ deposition: DepositionDetail }>()
 const emit = defineEmits<{ changed: [value: DepositionDetail]; back: [] }>()
-const current = ref(props.deposition)
-const definition = computed(() => getProfileDefinition(current.value.profile))
-const model = shallowRef(createQuestionnaire(current.value.profile, current.value.answers))
-const tab = ref('files'),
+const router = useRouter(),
+  auth = useAuthStore()
+const current = ref(props.deposition),
+  tab = ref('summary'),
+  selection = ref('summary'),
   busy = ref(false),
   notice = ref(''),
-  dirty = ref(false)
+  dirty = ref(false),
+  version = ref(0)
+const definition = computed(() => getProfileDefinition(current.value.profile))
+const model = shallowRef(createQuestionnaire(current.value.profile, current.value.answers))
 const editable = computed(() => current.value.status === 'DRAFT')
+const metadata = computed(() => {
+  const map = new Map<string, Element>()
+  function walk(elements: Element[]) {
+    for (const e of elements) {
+      map.set(e.name, e)
+      if (e.type === 'panel') walk(e.elements)
+      else if (e.type === 'paneldynamic') walk(e.templateElements)
+    }
+  }
+  walk(definition.value.pages.flatMap((p) => p.elements))
+  return map
+})
+function hasDemo(element: Element): boolean {
+  if (element.type === 'panel') return element.elements.some(hasDemo)
+  if (element.type === 'paneldynamic') return element.templateElements.some(hasDemo)
+  return element.x.demo === true
+}
 function configure() {
-  model.value.questionTitleLocation = 'left'
-  model.value.applyTheme({
+  const survey = model.value
+  survey.questionTitleLocation = 'left'
+  survey.applyTheme({
     isPanelless: true,
     cssVariables: {
       '--sjs-font-family': 'Arial, sans-serif',
-      '--sjs-font-size': '13px',
+      '--sjs-font-size': '14px',
       '--sjs-base-unit': '4px',
-      '--sjs-general-backcolor': '#ffffff',
-      '--sjs-general-backcolor-dim': '#ffffff',
-      '--sjs-primary-backcolor': '#659864',
-      '--sjs-corner-radius': '2px',
+      '--sjs-general-backcolor': 'var(--dep-panel)',
+      '--sjs-general-backcolor-dim': 'var(--dep-panel)',
+      '--sjs-primary-backcolor': 'var(--dep-success)',
+      '--sjs-corner-radius': '3px',
       '--sjs-shadow-small': 'none',
       '--sjs-shadow-inner': 'none',
     },
   })
-  model.value.showNavigationButtons = false
-  model.value.mode = editable.value ? 'edit' : 'display'
-  model.value.onValueChanged.add(() => {
+  survey.showNavigationButtons = false
+  survey.mode = editable.value ? 'edit' : 'display'
+  const changed = () => {
     dirty.value = true
+    version.value++
+  }
+  survey.onValueChanged.add(changed)
+  survey.onDynamicPanelRemoved.add(changed)
+  survey.onDynamicPanelAdded.add(changed)
+  survey.onAfterRenderQuestion.add((_, event) => {
+    const meta = metadata.value.get(event.question.name)
+    if (meta && !hasDemo(meta)) event.htmlElement.classList.add('outside-demo-field')
+    const header = event.htmlElement.querySelector('.sd-question__header')
+    if (header && event.question.description) {
+      const hint = document.createElement('span')
+      hint.className = 'field-help'
+      hint.title = event.question.description
+      hint.setAttribute('aria-label', event.question.description)
+      render(h(InfoFilled), hint)
+      header.append(hint)
+    }
   })
-  model.value.onDynamicPanelRemoved.add(() => {
-    dirty.value = true
-  })
-  model.value.onDynamicPanelAdded.add(() => {
-    dirty.value = true
-  })
+  const molecules = survey.getQuestionByName('molecules') as QuestionPanelDynamicModel
+  molecules.renderMode = 'tab'
+  molecules.templateTitle = '{panel.name}'
 }
 configure()
 function accept(value: DepositionDetail) {
@@ -57,8 +112,9 @@ function accept(value: DepositionDetail) {
   model.value = createQuestionnaire(value.profile, value.answers)
   configure()
   dirty.value = false
-  const index = definition.value.pages.findIndex((p) => p.name === tab.value)
-  if (index >= 0) model.value.currentPageNo = index
+  version.value++
+  const p = model.value.getPageByName(tab.value)
+  if (p) model.value.currentPage = p
   emit('changed', value)
 }
 watch(
@@ -68,10 +124,19 @@ watch(
   },
 )
 onBeforeUnmount(() => model.value.dispose())
-function select(name: string) {
+function select(name: string, recordId?: string) {
   tab.value = name
-  const i = definition.value.pages.findIndex((p) => p.name === name)
-  if (i >= 0) model.value.currentPageNo = i
+  selection.value = recordId === undefined ? name : 'macromolecules:' + recordId
+  const page = model.value.getPageByName(name)
+  if (page) model.value.currentPage = page
+  if (recordId !== undefined) {
+    const q = model.value.getQuestionByName('molecules') as QuestionPanelDynamicModel
+    const rows = q.value as AnswerRecord[]
+    q.currentIndex = rows.findIndex((r) => r.recordId === recordId)
+  }
+}
+function selectItem(item: DepositionNavItem) {
+  select(item.page, item.recordId)
 }
 async function saved() {
   if (dirty.value)
@@ -92,21 +157,32 @@ async function action(work: () => Promise<void>) {
 const save = () =>
   action(async () => {
     await saved()
-    notice.value = '草稿已保存。'
+    notice.value = 'Draft saved'
   })
 const check = () =>
   action(async () => {
     await saved()
     accept(await checkDeposition(current.value.id, current.value.revision))
-    tab.value = 'checks'
-    notice.value = '当前版本检查已完成。'
+    select('view')
+    notice.value = 'Validation completed'
   })
 const submit = () =>
   action(async () => {
     await saved()
     accept(await submitDeposition(current.value.id, current.value.revision))
-    tab.value = 'checks'
+    select('depsummary')
     notice.value = '本地提交完成'
+  })
+const leave = () =>
+  action(async () => {
+    await saved()
+    emit('back')
+  })
+const logout = () =>
+  action(async () => {
+    await saved()
+    await auth.logout()
+    await router.push('/login')
   })
 function upload(role: string, slot: number, event: Event) {
   const input = event.target as HTMLInputElement
@@ -123,26 +199,27 @@ function upload(role: string, slot: number, event: Event) {
         file,
       ),
     )
-    notice.value = '上传与解析完成'
+    notice.value = 'File uploaded and parsed'
     input.value = ''
   })
 }
-function reparse(fileId: number) {
-  return action(async () => {
+const reparse = (id: number) =>
+  action(async () => {
     await saved()
-    accept(await reparseDeposition(current.value.id, fileId, current.value.revision))
-    notice.value = '重新解析完成'
+    accept(await reparseDeposition(current.value.id, id, current.value.revision))
+    notice.value = 'File parsed'
   })
-}
+const remove = (id: number) =>
+  action(async () => {
+    await saved()
+    await removeDepositionFile(current.value.id, id, current.value.revision)
+    accept(await getDeposition(current.value.id))
+  })
 const fileOf = (role: string, slot: number) =>
   current.value.files.find((f) => f.kind === role && f.slot === slot)
-const stale = computed(
-  () => dirty.value || current.value.checks.some((c) => c.inputRevision !== current.value.revision),
-)
 const checksReady = computed(
   () =>
     !dirty.value &&
-    current.value.checks.length > 0 &&
     definition.value.checks
       .filter((c) => c.requiredFor.includes('submit'))
       .every((rule) => {
@@ -154,157 +231,367 @@ const checksReady = computed(
         )
       }),
 )
-const states: Record<string, string> = {
-  succeeded: '执行完成',
-  failed: '执行失败',
-  unavailable: '未接入',
-  pending: '等待',
-  running: '运行中',
+interface MissingItem {
+  page: string
+  title: string
+  question?: SurveyQuestion
 }
-function status(state: string) {
+const statistics = computed(() => {
+  void version.value
+  const pages: Record<string, PageProgress> = {},
+    missing: MissingItem[] = []
+  for (const p of model.value.pages) {
+    const stats: PageProgress = {
+      total: 0,
+      completed: 0,
+      required: 0,
+      requiredCompleted: 0,
+      extra: !definition.value.pages.find((page) => page.name === p.name)!.elements.some(hasDemo),
+    }
+    function count(q: SurveyQuestion) {
+      if (!q.isVisible || !q.isParentVisible || q.name === 'recordId') return
+      if (q instanceof QuestionPanelDynamicModel) {
+        if (q.panels.length) q.panels.forEach((panel) => panel.questions.forEach(count))
+        else {
+          stats.total++
+          if (q.isRequired || q.template.questions.some((c) => c.isRequired)) {
+            stats.required++
+            missing.push({ page: p.name, title: q.title, question: q })
+          }
+        }
+        return
+      }
+      const meta = metadata.value.get(q.name)
+      if (meta && meta.type !== 'panel' && meta.type !== 'paneldynamic' && meta.x.demo)
+        stats.extra = false
+      stats.total++
+      if (!q.isEmpty()) stats.completed++
+      if (q.isRequired) {
+        stats.required++
+        if (!q.isEmpty()) stats.requiredCompleted++
+        else missing.push({ page: p.name, title: q.title, question: q })
+      }
+    }
+    p.questions.forEach(count)
+    pages[p.name] = stats
+  }
+  const files = definition.value.files.reduce((n, r) => n + r.min, 0),
+    uploaded = current.value.files.filter((f) => f.parseState === 'succeeded').length
+  pages.uploads = {
+    total: files,
+    completed: uploaded,
+    required: files,
+    requiredCompleted: uploaded,
+    extra: false,
+  }
+  pages.summary = pages.uploads
+  for (const rule of definition.value.files)
+    for (let slot = 1; slot <= rule.min; slot++)
+      if (!fileOf(rule.role, slot))
+        missing.unshift({ page: 'uploads', title: rule.title + (rule.max > 1 ? ' ' + slot : '') })
+  const unique = Object.entries(pages)
+    .filter(([name]) => !['summary', 'message', 'ligandsummary'].includes(name))
+    .map(([, s]) => s)
+  const total = unique.reduce((n, s) => n + s.total, 0),
+    complete = unique.reduce((n, s) => n + s.completed, 0),
+    required = unique.reduce((n, s) => n + s.required, 0),
+    requiredComplete = unique.reduce((n, s) => n + s.requiredCompleted, 0)
+  return {
+    pages,
+    missing,
+    total,
+    complete,
+    required,
+    requiredComplete,
+    allPercent: total === 0 ? 0 : Math.round((complete / total) * 100),
+    mandatoryPercent: required === 0 ? 0 : Math.round((requiredComplete / required) * 100),
+  }
+})
+const navigation = computed(() => {
+  void version.value
+  return depositionNavigation(
+    getNavigation(current.value.profile),
+    model.value.data as Answers,
+    statistics.value.pages,
+  )
+})
+const navPages = computed(() => {
+  const result: DepositionNavItem[] = []
+  function walk(nodes: DepositionNavItem[]) {
+    for (const n of nodes) {
+      if (n.children) walk(n.children)
+      else result.push(n)
+    }
+  }
+  walk(navigation.value)
+  return result
+})
+const pageTitle = computed(() => {
+  if (tab.value === 'requirements') return 'List requirements'
+  if (tab.value === 'origins') return 'Field sources'
+  const n = navPages.value.find((n) => n.page === tab.value)
+  if (!n) throw new Error('Unknown navigation page: ' + tab.value)
+  return n.title
+})
+function nextPage() {
+  const index = navPages.value.findIndex((n) => n.id === selection.value || n.page === tab.value)
+  const next = navPages.value[index + 1]
+  if (next) selectItem(next)
+}
+function jump(item: MissingItem) {
+  select(item.page)
+  if (item.question) requestAnimationFrame(() => item.question!.focus())
+}
+const messages = computed(() => {
+  void version.value
+  const data = model.value.getValue('communication')
+  return data === undefined ? [] : (data as AnswerRecord[])
+})
+const subject = ref('General question'),
+  messageBody = ref('')
+const subjects = [
+  'General question',
+  'Metadata corrections',
+  'File upload issue',
+  'Submission issue',
+  'Response to issues',
+  'Re-upload files',
+  'Citation update',
+  'Release request',
+  'Other',
+]
+const postMessage = () =>
+  action(async () => {
+    if (!messageBody.value.trim()) throw new Error('Message is required')
+    model.value.setValue('communication', [
+      ...messages.value,
+      {
+        recordId: crypto.randomUUID(),
+        subject: subject.value,
+        body: messageBody.value.trim(),
+        date: new Date().toISOString(),
+      },
+    ])
+    await saved()
+    messageBody.value = ''
+    notice.value = 'Message saved'
+  })
+const ligands = computed(() => {
+  void version.value
+  const value = model.value.getValue('molecules')
+  return value === undefined
+    ? []
+    : (value as AnswerRecord[]).filter((r) => r.entityType === 'non-polymer')
+})
+function inspectLigand(record: AnswerRecord) {
+  const q = model.value.getQuestionByName('ligandReview') as QuestionPanelDynamicModel
+  const panel = q.addPanel()
+  panel.getQuestionByName('component').value = record.name
+  panel.getQuestionByName('recordId').value = crypto.randomUUID()
+}
+const states: Record<string, string> = {
+  succeeded: 'Completed',
+  failed: 'Failed',
+  unavailable: '未接入',
+  pending: 'Pending',
+  running: 'Running',
+}
+function stateLabel(state: string) {
   const label = states[state]
   if (label === undefined) throw new Error('Unknown processing state: ' + state)
   return label
 }
-const pageTitle = computed(() => {
-  if (tab.value === 'files') return '文件上传 / File upload'
-  if (tab.value === 'checks') return '检查结果 / Validation'
-  if (tab.value === 'origins') return '字段来源'
-  const page = definition.value.pages.find((p) => p.name === tab.value)
-  if (!page) throw new Error('Unknown questionnaire page: ' + tab.value)
-  return page.title
-})
-const nextPage = () => {
-  const names = ['files', ...definition.value.pages.map((p) => p.name), 'checks', 'origins']
-  const index = names.indexOf(tab.value)
-  if (index + 1 < names.length) select(names[index + 1]!)
-}
 </script>
 <template>
-  <article class="editor">
-    <header id="pane-north" class="workspace-pane">
-      <div class="masthead">
-        <img :src="'/onedep/images/onedep_logo.png'" alt="OneDep" height="45" />
-        <div>
-          <button @click="emit('back')">返回投递列表</button
-          ><img :src="'/onedep/images/wwpdb_logo.png'" alt="wwPDB" height="35" />
-        </div>
-      </div>
+  <article class="editor onedep-workspace">
+    <header class="editor-masthead">
+      <img :src="'/onedep/images/onedep_logo.png'" alt="OneDep" height="45" />
       <div class="deposition-title">
-        OneDep Deposition: {{ current.code }} — {{ definition.title }}
+        OneDep Deposition: {{ current.code
+        }}<small
+          >{{ current.method }} · {{ editable ? 'Draft' : 'Submitted' }} · v{{
+            current.revision
+          }}</small
+        >
       </div>
+      <button @click="leave"><Back />Deposition list</button
+      ><img :src="'/onedep/images/wwpdb_logo.png'" alt="wwPDB" height="34" />
     </header>
-    <div class="toolbar workspace-pane">
-      <span>版本 {{ current.revision }} · {{ editable ? '草稿' : '已本地提交' }}</span>
-
-      <button :disabled="busy || !editable" @click="save">
-        保存草稿{{ dirty ? ' · 未保存' : '' }}</button
-      ><button :disabled="busy || !editable" @click="check">检查当前版本</button
-      ><button :disabled="busy || !editable || !checksReady" @click="submit">本地提交</button
-      ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`">下载提交包</a
-      ><span v-if="busy">处理中…</span>
+    <div class="editor-toolbar">
+      <span class="scope-key"><i />黄色：原 demo 之外的内容</span
+      ><span v-if="busy">Processing…</span
+      ><span v-if="notice" role="status" class="notice">{{ notice }}</span>
+      <button :disabled="busy || !editable" @click="save">Save{{ dirty ? ' *' : '' }}</button
+      ><button :disabled="busy || !editable" @click="check">Run validation</button>
+      <a v-if="current.submission" :href="`/api/depositions/${current.id}/export`"
+        ><Download />Download submission</a
+      >
     </div>
-    <div class="layout">
-      <nav id="pane-west" class="workspace-pane" aria-label="投递步骤">
-        <div class="navigation-panel">
-          <h3 class="section-heading">Navigation</h3>
-          <button :class="{ active: tab === 'files' }" @click="select('files')">文件与解析</button
-          ><button
-            v-for="page in definition.pages"
-            :key="page.name"
-            :class="{ active: tab === page.name }"
-            @click="select(page.name)"
-          >
-            {{ page.title }}</button
-          ><button :class="{ active: tab === 'checks' }" @click="select('checks')">检查结果</button
-          ><button :class="{ active: tab === 'origins' }" @click="select('origins')">
-            字段来源
-          </button>
+    <div class="editor-layout">
+      <aside class="editor-sidebar" aria-label="投递步骤">
+        <button class="requirements-button" @click="select('requirements')">
+          List requirements
+        </button>
+        <div class="completion-bars">
+          <label
+            >All items <small>{{ statistics.complete }} / {{ statistics.total }}</small
+            ><progress :value="statistics.allPercent" max="100" /></label
+          ><label
+            >Mandatory items
+            <small>{{ statistics.requiredComplete }} / {{ statistics.required }}</small
+            ><progress :value="statistics.mandatoryPercent" max="100"
+          /></label>
         </div>
-      </nav>
-      <div id="pane-center" class="content workspace-pane" :aria-busy="busy">
-        <h3 class="section-heading">{{ pageTitle }}</h3>
-        <p v-if="notice" role="status" class="notice">{{ notice }}</p>
-        <section v-if="tab === 'files'">
-          <div class="files">
-            <template v-for="rule in definition.files" :key="rule.role"
-              ><article v-for="slot in rule.max" :key="`${rule.role}-${slot}`" class="file">
-                <h3>{{ rule.title }}{{ rule.max > 1 ? ` · ${slot}` : '' }}</h3>
-                <template v-if="fileOf(rule.role, slot)"
-                  ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
-                    fileOf(rule.role, slot)!.originalName
-                  }}</a>
-                  <p>
-                    文件版本 {{ fileOf(rule.role, slot)!.revision }} ·
-                    {{ status(fileOf(rule.role, slot)!.parseState) }}
-                  </p>
-                  <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
-                    {{ fileOf(rule.role, slot)!.parseError }}
-                  </p>
-                  <p
-                    v-for="conflict in fileOf(rule.role, slot)!.conflicts"
-                    :key="conflict"
-                    class="missing"
-                  >
-                    {{ conflict }}
-                  </p>
-                  <dl
-                    v-for="(value, key) in fileOf(rule.role, slot)!.facts as Record<
-                      string,
-                      unknown
-                    >"
-                    :key="key"
-                  >
-                    <dt>{{ key }}</dt>
-                    <dd>{{ value }}</dd>
-                  </dl>
-                  <button
-                    :disabled="busy || !editable"
-                    @click="reparse(fileOf(rule.role, slot)!.id)"
-                  >
-                    重新解析
-                  </button></template
-                >
-                <p v-else class="missing">待上传</p>
-                <label v-if="editable"
-                  >{{ fileOf(rule.role, slot) ? '替换文件' : '上传文件'
-                  }}<input
-                    type="file"
-                    :aria-label="`${rule.title} 槽 ${slot}`"
-                    :accept="rule.extensions.join(',')"
-                    :disabled="busy"
-                    @change="upload(rule.role, slot, $event)"
-                /></label></article
-            ></template>
-          </div>
-        </section>
-        <section v-else-if="tab === 'checks'">
-          <p v-if="editable && stale" class="error">
-            答案或附件已变化，旧检查已失效。请检查当前版本。
+        <h2 class="section-heading">Navigation</h2>
+        <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
+        <button class="logout-button" :disabled="busy" @click="logout">Log out</button>
+      </aside>
+      <main class="editor-content" :aria-busy="busy">
+        <h1 class="section-heading">{{ pageTitle }}</h1>
+        <section v-if="tab === 'welcome'" class="instructions">
+          <h2>Welcome to OneDep</h2>
+          <p>
+            Upload coordinates and experimental files, review extracted information, then complete
+            each section in the navigation tree.
           </p>
-          <p v-if="!current.checks.length">尚未执行检查。</p>
-          <article v-for="run in current.checks" :key="run.id" class="check">
-            <h3>{{ run.checkId }} · {{ status(run.state) }} · 输入版本 {{ run.inputRevision }}</h3>
-            <p v-if="run.error" class="missing">{{ run.error }}</p>
-            <p v-if="run.state === 'succeeded' && !run.issues.length">本项检查没有发现问题。</p>
+          <ol>
+            <li>
+              <button class="text-link" @click="select('uploads')">Upload / replace files</button>
+            </li>
+            <li>
+              <button class="text-link" @click="select('summary')">
+                Review the upload summary
+              </button>
+            </li>
+            <li>
+              <button class="text-link" @click="select('contact')">
+                Complete administrative and experimental information
+              </button>
+            </li>
+            <li>
+              <button class="text-link" @click="select('view')">Review validation results</button>
+            </li>
+            <li>
+              <button class="text-link" @click="select('depsummary')">
+                Review terms and submit
+              </button>
+            </li>
+          </ol>
+        </section>
+        <section v-else-if="tab === 'requirements'">
+          <p>{{ statistics.missing.length }} mandatory items to complete</p>
+          <ul class="requirements-list">
+            <li v-for="(item, i) in statistics.missing" :key="i">
+              <button class="text-link" @click="jump(item)">{{ item.title }} <ArrowRight /></button>
+            </li>
+          </ul>
+        </section>
+        <section v-else-if="tab === 'uploads'" class="files">
+          <article v-for="rule in definition.files" :key="rule.role" class="file-group">
+            <h2>{{ rule.title }}</h2>
+            <div v-for="slot in rule.max" :key="slot" class="file-slot">
+              <span v-if="rule.max > 1">{{ slot }}</span
+              ><template v-if="fileOf(rule.role, slot)"
+                ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
+                  fileOf(rule.role, slot)!.originalName
+                }}</a
+                ><span
+                  >v{{ fileOf(rule.role, slot)!.revision }} ·
+                  {{ stateLabel(fileOf(rule.role, slot)!.parseState) }}</span
+                >
+                <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
+                  {{ fileOf(rule.role, slot)!.parseError }}
+                </p>
+                <button :disabled="busy || !editable" @click="reparse(fileOf(rule.role, slot)!.id)">
+                  <Refresh />Reparse</button
+                ><button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
+                  <Delete />Remove
+                </button></template
+              ><span v-else>Awaiting upload</span>
+              <label v-if="editable"
+                >{{ fileOf(rule.role, slot) ? 'Replace' : 'Upload'
+                }}<input
+                  type="file"
+                  :aria-label="`${rule.title} 槽 ${slot}`"
+                  :accept="rule.extensions.join(',')"
+                  :disabled="busy"
+                  @change="upload(rule.role, slot, $event)"
+              /></label>
+            </div>
+          </article>
+        </section>
+        <section v-else-if="tab === 'summary'">
+          <p>Review the information extracted from the uploaded files.</p>
+          <details v-for="file in current.files" :key="file.id" open class="summary-block">
+            <summary>{{ file.originalName }} · {{ stateLabel(file.parseState) }}</summary>
+            <table>
+              <tbody>
+                <tr>
+                  <th>Version / size</th>
+                  <td>{{ file.revision }} / {{ (file.size / 1024 / 1024).toFixed(2) }} MB</td>
+                </tr>
+                <tr v-for="(value, key) in file.facts as Record<string, unknown>" :key="key">
+                  <th>{{ key }}</th>
+                  <td>{{ value }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-for="conflict in file.conflicts" :key="conflict" class="missing">{{ conflict }}</p>
+          </details>
+          <button v-if="!current.files.length" @click="select('uploads')">Upload files</button
+          ><button class="text-link" @click="select('origins')">
+            Field sources <ArrowRight />
+          </button>
+        </section>
+        <section v-else-if="tab === 'message'" class="outside-demo communication">
+          <h2>Messages</h2>
+          <article v-for="message in messages" :key="message.recordId" class="message">
+            <h3>
+              {{ message.subject }} <time>{{ message.date }}</time>
+            </h3>
+            <p>{{ message.body }}</p>
+          </article>
+          <p v-if="!messages.length">No messages</p>
+          <form v-if="editable" @submit.prevent="postMessage">
+            <h2>New message</h2>
+            <label
+              >Subject<select v-model="subject">
+                <option v-for="s in subjects" :key="s">{{ s }}</option>
+              </select></label
+            ><label>Message<textarea v-model="messageBody" rows="7" required /></label
+            ><button :disabled="busy" type="submit">Save message</button>
+          </form>
+        </section>
+        <section v-else-if="tab === 'view'">
+          <div class="validation-actions">
+            <button :disabled="busy || !editable" @click="check">Run validation</button
+            ><span v-if="dirty">Unsaved changes</span>
+          </div>
+          <p v-if="!current.checks.length">No validation report</p>
+          <details v-for="run in current.checks" :key="run.id" open class="summary-block">
+            <summary>
+              {{ run.checkId }} · {{ stateLabel(run.state) }} · v{{ run.inputRevision }}
+            </summary>
+            <p v-if="run.error" class="error">{{ run.error }}</p>
+            <p v-if="run.state === 'succeeded' && !run.issues.length">No issues found</p>
             <ul>
               <li
                 v-for="(issue, i) in run.issues"
                 :key="i"
                 :class="issue.severity === 'error' ? 'error' : 'missing'"
               >
-                {{ issue.severity === 'error' ? '阻塞' : '待补充' }} · {{ issue.message }}
+                {{ issue.message }}
               </li>
             </ul>
-          </article>
+          </details>
         </section>
         <section v-else-if="tab === 'origins'">
           <table>
             <thead>
               <tr>
-                <th>字段／记录</th>
-                <th>来源</th>
-                <th>原始位置</th>
+                <th>Field / record</th>
+                <th>Source</th>
+                <th>CIF tag</th>
               </tr>
             </thead>
             <tbody>
@@ -319,277 +606,92 @@ const nextPage = () => {
                 <td>
                   {{
                     origin.source === 'user'
-                      ? '人工修改'
-                      : `文件 ${origin.fileId} · v${origin.fileRevision}`
+                      ? 'Edited'
+                      : `File ${origin.fileId} · v${origin.fileRevision}`
                   }}
                 </td>
-                <td>{{ origin.tag }} {{ origin.sourceRowKey }}</td>
+                <td>{{ origin.tag }}</td>
               </tr>
             </tbody>
           </table>
         </section>
-        <SurveyComponent v-else :model="model" />
-        <button v-if="tab !== 'origins'" class="next" @click="nextPage">
-          Continue to next section ›
-        </button>
-      </div>
+        <template v-else>
+          <section v-if="tab === 'ligandsummary'" class="outside-demo">
+            <h2>Ligands identified in the coordinate file</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Ligand</th>
+                  <th>Inspection</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ligand in ligands" :key="ligand.recordId">
+                  <td>{{ ligand.name }}</td>
+                  <td>
+                    <button :disabled="!editable" @click="inspectLigand(ligand)">
+                      Inspect selected ligand
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="!ligands.length">No non-polymer entities in the parsed coordinate metadata</p>
+          </section>
+          <section v-if="tab === 'depsummary'" class="submission-summary">
+            <h2>Deposition summary</h2>
+            <table>
+              <tbody>
+                <tr>
+                  <th>Entry</th>
+                  <td>{{ current.code }}</td>
+                </tr>
+                <tr>
+                  <th>Title</th>
+                  <td>{{ model.getValue('title') }}</td>
+                </tr>
+                <tr>
+                  <th>Files</th>
+                  <td>{{ current.files.length }}</td>
+                </tr>
+                <tr>
+                  <th>Scientific information to complete</th>
+                  <td>
+                    <button class="text-link" @click="select('requirements')">
+                      {{ statistics.missing.length }} items
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <details>
+              <summary>Deposition and release policies</summary>
+              <p>
+                Review authors, contact information, release instructions and validation results
+                before submission.
+              </p>
+              <a href="https://www.wwpdb.org/deposition/policies" target="_blank" rel="noreferrer"
+                >wwPDB deposition policies</a
+              >
+            </details>
+          </section>
+          <SurveyComponent :model="model" />
+          <section v-if="tab === 'depsummary'" class="submission-actions">
+            <button :disabled="busy || !editable || !checksReady" @click="submit">
+              Submit deposition</button
+            ><button v-if="editable && !checksReady" :disabled="busy" @click="check">
+              Run validation</button
+            ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`"
+              >Download submission</a
+            >
+          </section>
+        </template>
+        <div class="page-actions">
+          <button :disabled="busy || !editable" @click="save">Save</button
+          ><button @click="nextPage">Continue to next section <ArrowRight /></button>
+        </div>
+      </main>
     </div>
-    <footer id="pane-south" class="workspace-pane">OneDep · {{ current.code }}</footer>
+    <footer class="editor-footer"><InfoFilled />OneDep · {{ current.code }}</footer>
   </article>
 </template>
-<style scoped>
-.editor {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  grid-template-rows: 91px 43px minmax(0, 1fr) 28px;
-  color: #222;
-  background: #ddd;
-  font:
-    12px Arial,
-    sans-serif;
-  gap: 1px;
-}
-.editor * {
-  box-sizing: border-box;
-}
-#pane-north {
-  padding: 8px 12px;
-}
-.masthead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.masthead > div {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-.deposition-title {
-  text-align: center;
-  color: #036;
-  margin-top: 6px;
-  font-size: 16px;
-}
-.toolbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 5px 12px;
-}
-.toolbar > span:first-child {
-  margin-right: auto;
-}
-button {
-  border: 1px solid #aaa;
-  border-radius: 3px;
-  padding: 5px 10px;
-  background: #f0f0f0;
-  color: #036;
-  font: inherit;
-  cursor: pointer;
-}
-button:hover {
-  border-color: #036;
-  background: #e4eee4;
-}
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-a {
-  color: #036;
-  text-decoration: underline;
-}
-.layout {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 1px;
-  min-height: 0;
-}
-#pane-west {
-  padding: 10px;
-}
-.main_navigation {
-  padding: 4px;
-}
-nav button {
-  display: block;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 7px 10px 7px 22px;
-  color: #222;
-  border-radius: 0;
-}
-nav button.active {
-  background: #e2eedd;
-  color: #036;
-}
-nav h3 {
-  margin-bottom: 8px;
-}
-.content {
-  min-width: 0;
-  overflow: auto;
-  padding: 10px;
-}
-.content > section {
-  padding: 8px 12px;
-}
-h3 {
-  font-size: 13px;
-  font-weight: normal;
-}
-.files {
-  display: block;
-}
-.file {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  column-gap: 16px;
-  border-bottom: 1px solid #ddd;
-  padding: 14px 0;
-}
-.file > h3 {
-  grid-column: 1;
-  grid-row: 1 / span 20;
-  margin: 0;
-  color: #036;
-}
-.file > :not(h3) {
-  grid-column: 2;
-  margin: 4px 0;
-}
-.file > button {
-  justify-self: start;
-}
-.file label {
-  display: block;
-}
-.file input {
-  margin: 6px 0;
-  display: block;
-  font: inherit;
-}
-.check {
-  border-bottom: 1px solid #ddd;
-  padding: 8px 0;
-}
-.error {
-  color: #a11;
-  white-space: pre-wrap;
-}
-.notice {
-  color: #365f35;
-  padding: 4px 12px;
-}
-.missing {
-  color: #715517;
-}
-dl {
-  display: flex;
-  gap: 12px;
-}
-dd {
-  margin: 0;
-}
-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-th,
-td {
-  padding: 7px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-li {
-  margin: 6px 0;
-}
-.next {
-  margin: 16px 12px;
-}
-#pane-south {
-  padding: 5px 12px;
-  text-align: right;
-  color: #555;
-}
-:deep(.sd-root-modern) {
-  --sd-base-padding: 12px;
-  --sd-base-vertical-padding: 8px;
-}
-:deep(.sd-container-modern__title),
-:deep(.sd-page__title) {
-  display: none;
-}
-:deep(.sd-body.sd-body--static) {
-  max-width: none;
-  padding: 8px 12px;
-}
-:deep(.sd-question) {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 12px;
-}
-:deep(.sd-question__title) {
-  color: #036;
-  font-size: 13px;
-  font-weight: normal;
-}
-:deep(.sd-question__header--location--left) {
-  flex: 0 0 200px;
-  width: 200px;
-}
-:deep(.sd-question__content--left) {
-  max-width: 600px;
-}
-:deep(.sd-formbox) {
-  border: 1px solid #aaa;
-  border-radius: 2px;
-  box-shadow: none;
-}
-:deep(.sd-question__content) {
-  min-width: 0;
-}
-:deep(.sd-input) {
-  border: 1px solid #aaa;
-  background: white;
-  padding: 5px 7px;
-  min-height: 28px;
-  font:
-    13px Arial,
-    sans-serif;
-  border-radius: 2px;
-}
-:deep(.sd-comment) {
-  min-height: 80px;
-}
-:deep(.sd-btn) {
-  box-shadow: none;
-  border: 1px solid #aaa;
-  padding: 6px 12px;
-  font-weight: normal;
-}
-:deep(.sd-panel__title) {
-  font-size: 13px;
-  font-weight: normal;
-}
-@media (max-width: 800px) {
-  .layout {
-    grid-template-columns: 180px minmax(0, 1fr);
-  }
-  .file {
-    grid-template-columns: 130px minmax(0, 1fr);
-  }
-  .masthead > div {
-    gap: 8px;
-  }
-  .deposition-title {
-    font-size: 13px;
-  }
-}
-</style>

@@ -6,7 +6,14 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig(({ mode, command }) => {
   const base = {
     plugins: [vue(), vueDevTools()],
-    resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@onedep/shared/deposition': fileURLToPath(
+          new URL('../../packages/shared/src/deposition/index.ts', import.meta.url),
+        ),
+      },
+    },
   }
   if (command === 'build') return base
   const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '')
