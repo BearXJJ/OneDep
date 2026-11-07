@@ -93,18 +93,25 @@ export function parseQuestionnaireDraft(input: unknown): QuestionnaireDraft {
 function native(elements: Element[], mode: ValidationMode): unknown[] {
   return elements.map((element) => {
     if (element.type === "panel")
-      return { ...element, elements: native(element.elements, mode) };
+      return {
+        ...element,
+        state: "expanded",
+        elements: native(element.elements, mode),
+      };
     const { x: _, ...field } = element;
     if (element.type === "paneldynamic")
       return {
         ...field,
         minPanelCount: 0,
         panelCount: 0,
+        panelAddText: "Add " + element.title,
+        panelRemoveText: "Remove",
         isRequired: mode === "complete" && !!element.minPanelCount,
         templateElements: native(element.templateElements, mode),
       };
     return {
       ...field,
+      storeOthersAsComment: false,
       ...(mode === "draft"
         ? {
             isRequired: false,
@@ -133,8 +140,55 @@ export function createQuestionnaire(
       elements: native(page.elements, mode),
     })),
   });
+  const recordChoices = new Map<
+    string,
+    { collection: string; labelField: string }
+  >();
+  function collectSources(elements: Element[]) {
+    for (const e of elements) {
+      if (e.type === "panel") collectSources(e.elements);
+      else if (e.type === "paneldynamic") collectSources(e.templateElements);
+      else if (e.x.choiceSource?.kind === "records")
+        recordChoices.set(e.name, e.x.choiceSource);
+    }
+  }
+  collectSources(
+    getProfileDefinition(profile).pages.flatMap((p) => p.elements),
+  );
+  function refreshChoices() {
+    function update(q: SurveyQuestion) {
+      if (q instanceof QuestionPanelDynamicModel) {
+        q.panels.forEach((p) => p.questions.forEach(update));
+        return;
+      }
+      const source = recordChoices.get(q.name);
+      if (!source) return;
+      const value = model.getValue(source.collection);
+      const rows: AnswerRecord[] = value === undefined ? [] : value;
+      const choices = rows.map((row, index) => ({
+        value: row.recordId,
+        text:
+          String(index + 1) +
+          (typeof row[source.labelField] === "string"
+            ? " · " + row[source.labelField]
+            : ""),
+      }));
+      if (source.collection === "emsample__em_entity_assembly") {
+        const name = model.getValue("em_entity_assembly__name");
+        if (typeof name === "string" && name.length)
+          choices.push({ value: "1", text: name });
+      }
+      (
+        q as SurveyQuestion & { choices: { value: string; text: string }[] }
+      ).choices = choices;
+    }
+    model.getAllQuestions().forEach(update);
+  }
   model.keepIncorrectValues = true;
   model.data = structuredClone(draft.answers);
+  model.onValueChanged.add(refreshChoices);
+  model.onDynamicPanelRemoved.add(refreshChoices);
+  refreshChoices();
   model.onDynamicPanelAdded.add((_, e) => {
     const q = e.panel.getQuestionByName("recordId");
     if (q && !q.value) q.value = globalThis.crypto.randomUUID();
@@ -177,8 +231,14 @@ export function validateQuestionnaire(
       }
       const select = q as SurveyQuestion & {
         visibleChoices?: { value: unknown }[];
+        hasOther?: boolean;
       };
-      if (select.visibleChoices && q.value !== undefined && q.value !== null) {
+      if (
+        select.visibleChoices &&
+        !select.hasOther &&
+        q.value !== undefined &&
+        q.value !== null
+      ) {
         const values = Array.isArray(q.value) ? q.value : [q.value];
         if (
           values.some((v) => !select.visibleChoices!.some((c) => c.value === v))
@@ -260,9 +320,11 @@ export function getCifBindings(profile: DepositionProfile): FieldBinding[] {
   return result;
 }
 export function addressKey(a: Address): string {
-  if (a.collection === undefined && a.recordId === undefined) return '//' + a.field;
-  if (!a.collection || !a.recordId) throw new Error('Record address requires collection and recordId');
-  return [a.collection, a.recordId, a.field].join('/');
+  if (a.collection === undefined && a.recordId === undefined)
+    return "//" + a.field;
+  if (!a.collection || !a.recordId)
+    throw new Error("Record address requires collection and recordId");
+  return [a.collection, a.recordId, a.field].join("/");
 }
 export function flattenAnswers(
   answers: Answers,

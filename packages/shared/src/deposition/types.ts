@@ -18,6 +18,7 @@ export type Binding = {
   direction: "read" | "write" | "both";
 };
 export interface FieldMeta {
+  demo?: boolean;
   source: Evidence[];
   choiceSource?: ChoiceSource;
   bindings?: Binding[];
@@ -36,6 +37,8 @@ export interface QuestionBase {
   name: string;
   title: string;
   description?: string;
+  placeholder?: string;
+  showOtherItem?: boolean;
   isRequired?: boolean;
   requiredIf?: Expr;
   visibleIf?: Expr;
@@ -66,6 +69,7 @@ export interface Group {
   elements: Element[];
 }
 export interface Repeat {
+  visibleIf?: Expr;
   type: "paneldynamic";
   name: string;
   title: string;
