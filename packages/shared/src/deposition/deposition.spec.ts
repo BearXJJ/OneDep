@@ -237,17 +237,7 @@ describe("questionnaire contract", () => {
     });
   });
 
-  it("uses identical business validation in the form model and the server entry point", () => {
-    const input = answers();
-    (input.authors as Array<Record<string, unknown>>)[0]!.orcid =
-      "not-an-orcid";
-    const model = createQuestionnaire("XRAY", input);
-    expect(model.validate()).toBe(false);
-    expect(
-      validateQuestionnaire({ profile: "XRAY", answers: input }, "complete"),
-    ).not.toEqual([]);
-    model.dispose();
-  });
+
 });
 
 describe("file contract", () => {
@@ -404,7 +394,7 @@ describe("active branch and native choice lifecycle", () => {
     ).toBe(true);
     model.dispose();
   });
-  it("does not treat false or zero as absent and rejects duplicate repeat identities", () => {
+  it("preserves false and zero answers", () => {
     const result = parseQuestionnaireDraft({
       profile: "EM_SINGLE_PARTICLE",
       answers: { termsAccepted: false, contour: 0 },

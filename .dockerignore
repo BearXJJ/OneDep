@@ -9,3 +9,4 @@
 **/.env.*
 **/*.tsbuildinfo
 apps/api/src/generated/prisma
+.local
