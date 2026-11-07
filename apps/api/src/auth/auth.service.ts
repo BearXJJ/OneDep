@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -27,18 +26,19 @@ function publicUser(user: {
   id: number;
   email: string;
   name: string | null;
-  orcid?: string | null;
-  institution?: string | null;
-  country?: string | null;
+  orcid: string | null;
+  institution: string | null;
+  country: string | null;
   role: UserRole;
 }): AuthUser {
+  if (!user.name) throw new Error('User name is missing: ' + user.id);
   return {
     id: user.id,
     email: user.email,
-    name: user.name ?? user.email,
-    orcid: user.orcid ?? '',
-    institution: user.institution ?? '',
-    country: user.country ?? '',
+    name: user.name,
+    orcid: user.orcid,
+    institution: user.institution,
+    country: user.country,
     role: user.role,
   };
 }
@@ -47,9 +47,9 @@ function adminUser(user: {
   id: number;
   email: string;
   name: string | null;
-  orcid?: string | null;
-  institution?: string | null;
-  country?: string | null;
+  orcid: string | null;
+  institution: string | null;
+  country: string | null;
   role: UserRole;
   createdAt: Date;
 }): AdminUser {
@@ -86,22 +86,15 @@ export class AuthService {
       throw new BadRequestException('只能注册提交员或审校员');
     }
 
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          name: cleanName,
-          email: cleanEmail,
-          passwordHash: await hashPassword(password),
-          role,
-        },
-      });
-      return publicUser(user);
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException('该邮箱已经注册');
-      }
-      throw error;
-    }
+    const user = await this.prisma.user.create({
+      data: {
+        name: cleanName,
+        email: cleanEmail,
+        passwordHash: await hashPassword(password),
+        role,
+      },
+    });
+    return publicUser(user);
   }
 
   // 校验登录凭据，并限制同一账号的连续失败次数。
@@ -136,7 +129,12 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: cleanEmail },
     });
-    if (!(await verifyPassword(password, user?.passwordHash ?? ''))) {
+    if (
+      !(await verifyPassword(
+        password,
+        user === null ? null : user.passwordHash,
+      ))
+    ) {
       const count = await this.redis.client.incr(failureKey);
       if (count === 1)
         await this.redis.client.expire(failureKey, LOGIN_WINDOW_SECONDS);
@@ -185,27 +183,21 @@ export class AuthService {
       throw new BadRequestException('包含不可修改的个人信息');
     }
 
-    try {
-      const user = await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          name: parseName(fields.name),
-          email: parseEmail(fields.email),
-          orcid: parseOrcid(fields.orcid),
-          institution: parseOptionalText(fields.institution, '机构', 200),
-          country: parseOptionalText(fields.country, '国家或地区', 100),
-        },
-      });
-      return publicUser(user);
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2002') {
-        throw new ConflictException('该邮箱已经注册');
-      }
-      if ((error as { code?: string }).code === 'P2025') {
-        throw new NotFoundException('用户不存在');
-      }
-      throw error;
-    }
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: parseName(fields.name),
+        email: parseEmail(fields.email),
+        ...('orcid' in fields ? { orcid: parseOrcid(fields.orcid) } : {}),
+        ...('institution' in fields
+          ? { institution: parseOptionalText(fields.institution, '机构', 200) }
+          : {}),
+        ...('country' in fields
+          ? { country: parseOptionalText(fields.country, '国家或地区', 100) }
+          : {}),
+      },
+    });
+    return publicUser(user);
   }
 
   // 修改密码前再次验证当前密码，避免登录会话被他人直接用于换密。
@@ -299,28 +291,21 @@ export class AuthService {
       throw new ForbiddenException('管理员身份不能在此修改');
     }
 
-    try {
-      const user = await this.prisma.user.update({
-        where: { id: userId, role: target.role },
-        data: { role },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          orcid: true,
-          institution: true,
-          country: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-      return adminUser(user);
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2025') {
-        throw new ConflictException('用户信息已变化，请刷新后重试');
-      }
-      throw error;
-    }
+    const user = await this.prisma.user.update({
+      where: { id: userId, role: target.role },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        orcid: true,
+        institution: true,
+        country: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+    return adminUser(user);
   }
 
   // 删除普通账户后，其旧会话会因找不到用户而失效。
@@ -338,16 +323,9 @@ export class AuthService {
       throw new ForbiddenException('管理员账户不能在此删除');
     }
 
-    try {
-      await this.prisma.user.delete({
-        where: { id: userId, role: target.role },
-      });
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2025') {
-        throw new ConflictException('用户信息已变化，请刷新后重试');
-      }
-      throw error;
-    }
+    await this.prisma.user.delete({
+      where: { id: userId, role: target.role },
+    });
   }
 
   async deleteSession(token?: string): Promise<void> {
@@ -356,7 +334,9 @@ export class AuthService {
 }
 
 function parseName(value: unknown): string {
-  const name = typeof value === 'string' ? value.trim() : '';
+  if (typeof value !== 'string')
+    throw new BadRequestException('姓名必须为文本');
+  const name = value.trim();
   if (name.length < 2 || name.length > 80) {
     throw new BadRequestException('姓名需要 2–80 个字符');
   }
@@ -364,7 +344,9 @@ function parseName(value: unknown): string {
 }
 
 function parseEmail(value: unknown): string {
-  const email = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (typeof value !== 'string')
+    throw new BadRequestException('邮箱必须为文本');
+  const email = value.trim().toLowerCase();
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new BadRequestException('请输入有效的邮箱');
   }
@@ -372,7 +354,10 @@ function parseEmail(value: unknown): string {
 }
 
 function parseOrcid(value: unknown): string | null {
-  const orcid = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (value === null) return null;
+  if (typeof value !== 'string')
+    throw new BadRequestException('ORCID 必须为文本或 null');
+  const orcid = value.trim().toUpperCase();
   if (!orcid) return null;
   if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcid)) {
     throw new BadRequestException('请输入有效的 ORCID');
@@ -385,9 +370,12 @@ function parseOptionalText(
   label: string,
   maxLength: number,
 ): string | null {
-  const text = typeof value === 'string' ? value.trim() : '';
+  if (value === null) return null;
+  if (typeof value !== 'string')
+    throw new BadRequestException(label + '必须为文本或 null');
+  const text = value.trim();
   if (text.length > maxLength) {
     throw new BadRequestException(`${label}不能超过 ${maxLength} 个字符`);
   }
-  return text || null;
+  return text.length === 0 ? null : text;
 }

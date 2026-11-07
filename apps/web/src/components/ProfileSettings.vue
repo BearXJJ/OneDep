@@ -172,11 +172,12 @@ const ROLE_LABELS: Record<UserRole, string> = {
 }
 
 const auth = useAuthStore()
-const name = ref(auth.user?.name ?? '')
-const email = ref(auth.user?.email ?? '')
-const orcid = ref(auth.user?.orcid ?? '')
-const institution = ref(auth.user?.institution ?? '')
-const country = ref(auth.user?.country ?? '')
+if (!auth.user) throw new Error('Authenticated user required')
+const name = ref(auth.user.name)
+const email = ref(auth.user.email)
+const orcid = ref(auth.user.orcid)
+const institution = ref(auth.user.institution)
+const country = ref(auth.user.country)
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -186,14 +187,14 @@ const profileNotice = ref('')
 const profileNoticeType = ref<'success' | 'error'>('success')
 const passwordNotice = ref('')
 const passwordNoticeType = ref<'success' | 'error'>('success')
-const roleLabel = computed(() => ROLE_LABELS[auth.user?.role ?? 'SUBMITTER'])
+const roleLabel = computed(() => (auth.user ? ROLE_LABELS[auth.user.role] : ''))
 const changed = computed(
   () =>
     name.value.trim() !== auth.user?.name ||
     email.value.trim().toLowerCase() !== auth.user?.email ||
-    orcid.value.trim().toUpperCase() !== auth.user?.orcid ||
-    institution.value.trim() !== auth.user?.institution ||
-    country.value.trim() !== auth.user?.country,
+    (orcid.value === null ? null : orcid.value.trim().toUpperCase()) !== auth.user?.orcid ||
+    (institution.value === null ? null : institution.value.trim()) !== auth.user?.institution ||
+    (country.value === null ? null : country.value.trim()) !== auth.user?.country,
 )
 const passwordReady = computed(
   () =>
@@ -205,11 +206,12 @@ const passwordReady = computed(
 watch(
   () => auth.user,
   (user) => {
-    name.value = user?.name ?? ''
-    email.value = user?.email ?? ''
-    orcid.value = user?.orcid ?? ''
-    institution.value = user?.institution ?? ''
-    country.value = user?.country ?? ''
+    if (!user) return
+    name.value = user.name
+    email.value = user.email
+    orcid.value = user.orcid
+    institution.value = user.institution
+    country.value = user.country
   },
 )
 
@@ -224,7 +226,11 @@ async function saveProfile() {
     showProfileNotice('请输入有效的邮箱。', 'error')
     return
   }
-  if (orcid.value.trim() && !/^\d{4}-\d{4}-\d{4}-\d{3}[\dXx]$/.test(orcid.value.trim())) {
+  if (
+    orcid.value !== null &&
+    orcid.value.trim() &&
+    !/^\d{4}-\d{4}-\d{4}-\d{3}[\dXx]$/.test(orcid.value.trim())
+  ) {
     showProfileNotice('请输入有效的 ORCID。', 'error')
     return
   }
@@ -235,13 +241,11 @@ async function saveProfile() {
     await auth.updateProfile({
       name: name.value.trim(),
       email: email.value.trim().toLowerCase(),
-      orcid: orcid.value.trim().toUpperCase(),
-      institution: institution.value.trim(),
-      country: country.value.trim(),
+      orcid: orcid.value === null ? null : orcid.value.trim().toUpperCase(),
+      institution: institution.value === null ? null : institution.value.trim(),
+      country: country.value === null ? null : country.value.trim(),
     })
     showProfileNotice('个人信息已更新。')
-  } catch (cause) {
-    showProfileNotice(cause instanceof Error ? cause.message : '保存失败，请稍后再试。', 'error')
   } finally {
     savingProfile.value = false
   }
@@ -270,8 +274,6 @@ async function savePassword() {
     newPassword.value = ''
     confirmPassword.value = ''
     showPasswordNotice('密码已修改。')
-  } catch (cause) {
-    showPasswordNotice(cause instanceof Error ? cause.message : '修改失败，请稍后再试。', 'error')
   } finally {
     savingPassword.value = false
   }

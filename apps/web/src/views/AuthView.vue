@@ -118,8 +118,6 @@ async function submit() {
       await auth.login({ email: email.value, password: password.value })
     }
     await router.push('/')
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '请求失败，请稍后再试'
   } finally {
     submitting.value = false
   }

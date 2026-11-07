@@ -1,3 +1,4 @@
+import { validateRuntimeConfig } from './runtime-config.js';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
@@ -11,6 +12,7 @@ import { DepositionsModule } from './depositions/depositions.module.js';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateRuntimeConfig,
     }),
     DatabaseModule,
     RedisModule,

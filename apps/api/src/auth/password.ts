@@ -23,15 +23,23 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(
   password: string,
-  stored: string,
+  stored: string | null,
 ): Promise<boolean> {
+  if (stored === null) {
+    timingSafeEqual(await derive(password, DUMMY_SALT), DUMMY_HASH);
+    return false;
+  }
   const [prefix, saltHex, hashHex] = stored.split('$');
-  const valid =
-    prefix === PREFIX &&
-    /^[a-f0-9]{32}$/.test(saltHex ?? '') &&
-    /^[a-f0-9]{128}$/.test(hashHex ?? '');
-  const salt = valid ? Buffer.from(saltHex, 'hex') : DUMMY_SALT;
-  const expected = valid ? Buffer.from(hashHex, 'hex') : DUMMY_HASH;
-  const actual = await derive(password, salt);
-  return valid && timingSafeEqual(actual, expected);
+  if (
+    prefix !== PREFIX ||
+    typeof saltHex !== 'string' ||
+    typeof hashHex !== 'string' ||
+    !/^[a-f0-9]{32}$/.test(saltHex) ||
+    !/^[a-f0-9]{128}$/.test(hashHex)
+  )
+    throw new Error('Invalid stored password hash');
+  return timingSafeEqual(
+    await derive(password, Buffer.from(saltHex, 'hex')),
+    Buffer.from(hashHex, 'hex'),
+  );
 }

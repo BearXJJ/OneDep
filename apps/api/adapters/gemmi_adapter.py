@@ -71,7 +71,7 @@ def extract(block, bindings):
                 source_key = decoded(keys[i])
                 record_id = group+':'+str(source_key)
                 row = next((r for r in answers[group] if r['recordId']==record_id),None)
-                if row is None: continue
+                if row is None: raise ValueError('CIF entity key has no matching record: '+tag)
                 row[binding['field']] = value
                 address.update(collection=group,recordId=record_id)
             else:
@@ -89,7 +89,7 @@ def inspect(request):
         doc.write_file(base)
         answers, values, records = extract(doc.sole_block(),request['bindings'])
         return {'answers':answers,'values':values,'records':records,'baseName':Path(base).name,
-                'facts':{'atoms':sum(m.count_atom_sites() for m in s),'models':len(s),'entities':len(answers.get('molecules',[]))},'issues':[]}
+                'facts':{'atoms':sum(m.count_atom_sites() for m in s),'models':len(s),'entities':len(answers['molecules'])},'issues':[]}
     if parser == 'reflections':
         if path.suffix.lower()=='.mtz':
             mtz=gemmi.read_mtz_file(str(path)); count=mtz.nreflections
@@ -125,7 +125,8 @@ def export(request):
     for binding in request['bindings']:
         if binding['direction']=='read' or binding.get('readOnly'):continue
         group=binding.get('group'); field=binding['field']; tag=binding['tag']; cat,col=tag.split('.',1); cat+='.'
-        rows=answers.get(group,[]) if group else [answers]
+        if group and group not in answers: continue
+        rows=answers[group] if group else [answers]
         for row in rows:
             if field not in row:continue
             value=row[field]
@@ -137,7 +138,8 @@ def export(request):
             n=len(next(iter(data.values()))) if data else 0
             if group:
                 keycol=binding['key'].split('.',1)[1]
-                keys=[decoded(v) for v in data.get(keycol,[])]
+                if data and keycol not in data: raise ValueError('CIF category is missing its row key: '+cat+keycol)
+                keys=[decoded(v) for v in data[keycol]] if data else []
                 if source_key not in keys:
                     for vals in data.values():vals.append('?')
                     data.setdefault(keycol,['?']*(n+1))[n]=gemmi.cif.quote(source_key)
@@ -157,7 +159,7 @@ def export(request):
         if cat in touched:
             changed_cols={b['tag'].split('.',1)[1] for b in request['bindings'] if b['tag'].startswith(cat) and not b.get('readOnly')}
             for key,values in data.items():
-                if key not in changed_cols and after.get(key,[])[:len(values)]!=values:raise ValueError('Export changed unbound column '+cat+key)
+                if key not in changed_cols and after[key][:len(values)]!=values:raise ValueError('Export changed unbound column '+cat+key)
     for (tag,key),value in expected.items():
         binding=next(b for b in request['bindings'] if b['tag']==tag)
         vals=list(reread.find_values(tag))
@@ -173,10 +175,8 @@ def export(request):
         archive.writestr('submission.json',json.dumps(request['snapshot'],ensure_ascii=False,indent=2))
     return {'atoms':atoms,'preservedCategories':len(original)-len(touched),'boundValues':len(expected),'sha256':hashlib.file_digest(open(request['zipPath'],'rb'),'sha256').hexdigest()}
 
-try:
-    request=json.load(sys.stdin)
-    result=inspect(request) if request['action']=='inspect' else export(request) if request['action']=='export' else (_ for _ in ()).throw(ValueError('Unknown action'))
-    print(json.dumps(result,ensure_ascii=False,allow_nan=False))
-except Exception as error:
-    print(type(error).__name__+': '+str(error),file=sys.stderr)
-    sys.exit(1)
+request=json.load(sys.stdin)
+if request['action']=='inspect': result=inspect(request)
+elif request['action']=='export': result=export(request)
+else: raise ValueError('Unknown action: '+request['action'])
+print(json.dumps(result,ensure_ascii=False,allow_nan=False))

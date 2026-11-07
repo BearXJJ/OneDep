@@ -145,17 +145,7 @@ export function validateQuestionnaire(
   input: unknown,
   mode: ValidationMode = "draft",
 ): ContractIssue[] {
-  let draft: QuestionnaireDraft;
-  try {
-    draft = parseQuestionnaireDraft(input);
-  } catch (e) {
-    if (!(e instanceof z.ZodError)) throw e;
-    return e.issues.map((i) => ({
-      path: i.path.map((p) => (typeof p === "symbol" ? String(p) : p)),
-      code: i.code,
-      message: i.message,
-    }));
-  }
+  const draft = parseQuestionnaireDraft(input);
   const model = createQuestionnaire(draft.profile, draft.answers, mode);
   try {
     model.validate();
@@ -252,8 +242,8 @@ export function getCifBindings(profile: DepositionProfile): FieldBinding[] {
       if (el.type === "panel") walk(el.elements, group, recordKey);
       else if (el.type === "paneldynamic")
         walk(el.templateElements, el.name, el.x.bindings?.[0]?.key);
-      else
-        for (const b of el.x.bindings ?? [])
+      else if (el.x.bindings)
+        for (const b of el.x.bindings)
           result.push({
             field: el.name,
             group,
@@ -270,7 +260,9 @@ export function getCifBindings(profile: DepositionProfile): FieldBinding[] {
   return result;
 }
 export function addressKey(a: Address): string {
-  return [a.collection ?? "", a.recordId ?? "", a.field].join("/");
+  if (a.collection === undefined && a.recordId === undefined) return '//' + a.field;
+  if (!a.collection || !a.recordId) throw new Error('Record address requires collection and recordId');
+  return [a.collection, a.recordId, a.field].join('/');
 }
 export function flattenAnswers(
   answers: Answers,
@@ -298,28 +290,23 @@ export function userOrigins(
   origins: ValueOrigin[],
 ): ValueOrigin[] {
   const before = new Map(
-    flattenAnswers(previous).map((v) => [
-      addressKey(v.address),
-      JSON.stringify(v.value),
-    ]),
+    flattenAnswers(previous).map((v) => [addressKey(v.address), v]),
   );
   const after = new Map(
     flattenAnswers(next).map((v) => [addressKey(v.address), v]),
   );
   const result = new Map(origins.map((o) => [addressKey(o.address), o]));
   for (const [key, value] of after)
-    if (before.get(key) !== JSON.stringify(value.value))
+    if (JSON.stringify(before.get(key)?.value) !== JSON.stringify(value.value))
       result.set(key, {
         ...result.get(key),
         address: value.address,
         source: "user",
       });
-  for (const [key] of before)
+  for (const [key, value] of before)
     if (!after.has(key))
       result.set(key, {
-        address: result.get(key)?.address ?? {
-          field: key.split("/").slice(-1)[0]!,
-        },
+        address: value.address,
         source: "user",
       });
   return [...result.values()];

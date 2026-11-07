@@ -6,7 +6,8 @@ import { hashPassword } from './auth/password.js';
 
 const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.ADMIN_PASSWORD;
-const name = process.env.ADMIN_NAME?.trim() || '管理员';
+const name = process.env.ADMIN_NAME?.trim();
+if (!name) throw new Error('ADMIN_NAME is required');
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {

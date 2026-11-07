@@ -12,7 +12,7 @@ import DashboardView from '../views/DashboardView.vue'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const emptyProfile = { orcid: '', institution: '', country: '' }
+const emptyProfile = { orcid: null, institution: null, country: null }
 
 const depositionFixture: DepositionDetail = {
   id: 1,
@@ -499,4 +499,14 @@ it('lets an administrator add accounts, change roles, and confirm deletion', asy
     }),
   )
   expect(wrapper.find('tbody').text()).toContain('chen@example.com')
+})
+
+it('propagates session server failures without treating them as logout', async () => {
+  setActivePinia(createPinia())
+  const auth = useAuthStore()
+  auth.user = { id: 1, name: 'Alice', email: 'alice@example.test', ...emptyProfile, role: 'SUBMITTER' }
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('Redis unavailable', { status: 503 })))
+  await expect(auth.restore()).rejects.toThrow('Redis unavailable')
+  expect(auth.initialized).toBe(false)
+  expect(auth.user.email).toBe('alice@example.test')
 })

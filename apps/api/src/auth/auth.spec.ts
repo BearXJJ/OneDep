@@ -1,3 +1,4 @@
+import { httpErrorProvider } from '../http-error.filter.js';
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -36,7 +37,13 @@ describe('authentication HTTP flow', () => {
           if (users.some((user) => user.email === data.email)) {
             throw Object.assign(new Error('duplicate'), { code: 'P2002' });
           }
-          const user = { ...data, id: users.length + 1 };
+          const user = {
+            orcid: null,
+            institution: null,
+            country: null,
+            ...data,
+            id: users.length + 1,
+          };
           users.push(user);
           return user;
         },
@@ -131,6 +138,7 @@ describe('authentication HTTP flow', () => {
     const module = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+        httpErrorProvider,
         AuthService,
         SessionGuard,
         { provide: APP_GUARD, useExisting: SessionGuard },

@@ -1,10 +1,17 @@
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
-export function runGemmi(request: object): Promise<Record<string, unknown>> {
-  return new Promise((accept, reject) => {
+export interface GemmiConfig {
+  python: string;
+  timeoutMs: number;
+  maxOutputBytes: number;
+}
+export async function runGemmi(
+  request: object,
+  config: GemmiConfig,
+): Promise<Record<string, unknown>> {
+  const output = await new Promise<string>((accept, reject) => {
     const child = spawn(
-      process.env.ONEDEP_PYTHON ??
-        resolve(process.cwd(), '../../.local/python/Scripts/python.exe'),
+      resolve(config.python),
       [resolve(process.cwd(), 'adapters/gemmi_adapter.py')],
       {
         windowsHide: true,
@@ -13,44 +20,35 @@ export function runGemmi(request: object): Promise<Record<string, unknown>> {
       },
     );
     let output = '',
-      error = '';
-    let settled = false;
-    const finish = (cause?: Error, result?: Record<string, unknown>) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (cause) reject(cause);
-      else accept(result!);
-    };
+      error = '',
+      bytes = 0;
     const timer = setTimeout(() => {
       child.kill();
-      finish(new Error('Gemmi 超过 90 秒，任务已停止。'));
-    }, 90000);
-    child.on('error', (e) => finish(new Error(`Gemmi 无法启动：${e.message}`)));
+      reject(new Error('Gemmi timed out after ' + config.timeoutMs + ' ms'));
+    }, config.timeoutMs);
+    child.on('error', (cause) => {
+      clearTimeout(timer);
+      reject(cause);
+    });
     child.stdout.on('data', (data: Buffer) => {
-      output += data.toString();
-      if (output.length > 4 * 1024 * 1024) {
+      bytes += data.length;
+      if (bytes > config.maxOutputBytes) {
         child.kill();
-        finish(new Error('Gemmi 返回超出大小限制。'));
+        reject(new Error('Gemmi output exceeds GEMMI_MAX_OUTPUT_BYTES'));
       }
+      output += data.toString();
     });
     child.stderr.on('data', (data: Buffer) => {
       error += data.toString();
     });
     child.on('close', (code) => {
-      if (code !== 0) {
-        finish(new Error(`Gemmi 退出码 ${code}: ${error.trim()}`));
-        return;
-      }
-      try {
-        finish(undefined, JSON.parse(output) as Record<string, unknown>);
-      } catch {
-        finish(new Error('Gemmi 返回了无效 JSON。'));
-      }
+      clearTimeout(timer);
+      if (code !== 0)
+        reject(new Error('Gemmi exit ' + code + ': ' + error.trim()));
+      else accept(output);
     });
-    child.stdin.on('error', (e) =>
-      finish(new Error(`Gemmi 输入失败：${e.message}`)),
-    );
+    child.stdin.on('error', reject);
     child.stdin.end(JSON.stringify(request));
   });
+  return JSON.parse(output) as Record<string, unknown>;
 }

@@ -29,11 +29,7 @@ function readCookie(request: Request, name: string): string | undefined {
     const separator = part.indexOf('=');
     if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
 
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return undefined;
-    }
+    return decodeURIComponent(part.slice(separator + 1).trim());
   }
   return undefined;
 }

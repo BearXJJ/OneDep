@@ -33,7 +33,7 @@ import { extname, resolve } from 'node:path';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { parseCreationOptions } from './deposition-creation.js';
-import { runGemmi } from './gemmi.js';
+import { runGemmi, type GemmiConfig } from './gemmi.js';
 export interface UploadedFileData {
   originalname: string;
   mimetype: string;
@@ -45,24 +45,24 @@ type Row = Prisma.DepositionGetPayload<{
 }>;
 type FileRow = Row['files'][number];
 const json = (v: unknown) => v as Prisma.InputJsonValue;
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 @Injectable()
 export class DepositionsService {
   private readonly uploadDir: string;
+  private readonly gemmi: GemmiConfig;
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
-    this.uploadDir = resolve(
-      config.get<string>('UPLOAD_DIR') ??
-        resolve(process.cwd(), '../../.local/uploads'),
-    );
+    this.uploadDir = resolve(config.getOrThrow<string>('UPLOAD_DIR'));
+    this.gemmi = {
+      python: config.getOrThrow<string>('ONEDEP_PYTHON'),
+      timeoutMs: Number(config.getOrThrow('GEMMI_TIMEOUT_MS')),
+      maxOutputBytes: Number(config.getOrThrow('GEMMI_MAX_OUTPUT_BYTES')),
+    };
   }
   private profile(row: Row): DepositionProfile {
     if (row.profile !== 'XRAY' && row.profile !== 'EM_SINGLE_PARTICLE')
-      throw new BadRequestException(
-        '旧格式投递尚未转换。请创建本地 demo 草稿；旧记录原样保留。',
-      );
+      throw new BadRequestException('投递缺少有效 profile');
     return row.profile;
   }
   private async owned(
@@ -147,14 +147,12 @@ export class DepositionsService {
       throw new BadRequestException('未知草稿属性');
     this.revision(current, body.revision);
     let answers: Answers;
-    try {
-      answers = parseQuestionnaireDraft({
-        profile,
-        answers: body.answers,
-      }).answers;
-    } catch (e) {
-      throw new BadRequestException(message(e));
-    }
+
+    answers = parseQuestionnaireDraft({
+      profile,
+      answers: body.answers,
+    }).answers;
+
     const before = current.answers as Answers;
     const origins = current.origins as unknown as ValueOrigin[];
     const oldFlat = new Map(
@@ -185,8 +183,14 @@ export class DepositionsService {
     for (const page of getProfileDefinition(profile).pages)
       for (const el of page.elements) {
         if (el.type === 'paneldynamic' && el.x.origin === 'parsed') {
+          if (!(el.name in before) && !(el.name in answers)) continue;
+          if (
+            !Array.isArray(before[el.name]) ||
+            !Array.isArray(answers[el.name])
+          )
+            throw new BadRequestException('解析实体记录缺失');
           const ids = (a: Answers) =>
-            ((a[el.name] ?? []) as AnswerRecord[])
+            (a[el.name] as AnswerRecord[])
               .map((r) => r.recordId)
               .sort()
               .join('|');
@@ -238,21 +242,18 @@ export class DepositionsService {
     await writeFile(resolve(this.uploadDir, storedName), file.buffer, {
       flag: 'wx',
     });
-    // Invalid uploads remain an explicit failed version in their slot for diagnosis.
-    let result: Record<string, unknown> = {},
-      state = 'succeeded',
-      error: string | null = null;
-    try {
-      result = await runGemmi({
+    let result: Record<string, unknown>;
+
+    result = await runGemmi(
+      {
         action: 'inspect',
         path: resolve(this.uploadDir, storedName),
         parserId: requirement.parserId,
         bindings: getCifBindings(profile),
-      });
-    } catch (e) {
-      state = 'failed';
-      error = message(e);
-    }
+      },
+      this.gemmi,
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await this.bump(tx, current);
       await tx.depositionFile.updateMany({
@@ -272,15 +273,15 @@ export class DepositionsService {
           revision: version,
           originalName: file.originalname,
           storedName,
-          mimeType: file.mimetype || 'application/octet-stream',
+          mimeType: file.mimetype,
           size: file.size,
           checksum: createHash('sha256').update(file.buffer).digest('hex'),
-          parseState: state,
-          parseError: error,
-          parseResult: json(result),
+          parseState: 'succeeded',
+          parseError: null,
+          parseResult: json({ ...result, conflicts: [] }),
         },
       });
-      if (state === 'succeeded' && kind === 'COORDINATE') {
+      if (kind === 'COORDINATE') {
         const merged = this.merge(current, saved, result);
         await tx.depositionFile.update({
           where: { id: saved.id },
@@ -330,7 +331,8 @@ export class DepositionsService {
       origins.delete(key);
     }
     for (const record of patch.records) {
-      const rows = (answers[record.collection] ??= []) as AnswerRecord[];
+      if (!(record.collection in answers)) answers[record.collection] = [];
+      const rows = answers[record.collection] as AnswerRecord[];
       if (!rows.some((r) => r.recordId === record.recordId))
         rows.push({ recordId: record.recordId });
       const address = {
@@ -389,31 +391,29 @@ export class DepositionsService {
     const requirement = getProfileDefinition(profile).files.find(
       (f) => f.role === file.kind,
     )!;
-    let result: Record<string, unknown> = {},
-      state = 'succeeded',
-      error: string | null = null;
-    try {
-      result = await runGemmi({
+    let result: Record<string, unknown>;
+
+    result = await runGemmi(
+      {
         action: 'inspect',
         path: resolve(this.uploadDir, file.storedName),
         parserId: requirement.parserId,
         bindings: getCifBindings(profile),
-      });
-    } catch (e) {
-      state = 'failed';
-      error = message(e);
-    }
+      },
+      this.gemmi,
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await this.bump(tx, row);
       await tx.depositionFile.update({
         where: { id: fileId },
         data: {
-          parseState: state,
-          parseError: error,
+          parseState: 'succeeded',
+          parseError: null,
           parseResult: json(result),
         },
       });
-      if (state === 'succeeded' && file.kind === 'COORDINATE') {
+      if (file.kind === 'COORDINATE') {
         const merged = this.merge(row, file, result);
         await tx.depositionFile.update({
           where: { id: file.id },
@@ -482,14 +482,6 @@ export class DepositionsService {
       definitionRevision: configured.revision,
       state: c.requiredFor.length ? 'running' : 'unavailable',
       issues: [],
-      ...(!c.requiredFor.length
-        ? {
-            error:
-              c.id === 'ligand-ccd'
-                ? 'CCD 配体一致性检查未接入；LBN/P5S/PEV 未在本机核验。'
-                : '完整 wwPDB 科学评估及人工审校未接入。',
-          }
-        : {}),
     }));
     const questionnaire = runs[0]!;
     questionnaire.state = 'succeeded';
@@ -524,48 +516,49 @@ export class DepositionsService {
     }));
     const facts = new Map<string, Record<string, unknown>>();
     for (const file of files) {
-      try {
-        if (file.parseState !== 'succeeded')
-          throw new Error(file.parseError ?? '文件尚未成功解析');
-        const bytes = await readFile(resolve(this.uploadDir, file.storedName));
-        if (createHash('sha256').update(bytes).digest('hex') !== file.checksum)
-          throw new Error('文件摘要与保存版本不符');
-        const rule = configured.files.find((f) => f.role === file.kind);
-        if (!rule) throw new Error('当前方法不接受此文件角色');
-        const result = await runGemmi({
+      if (file.parseState !== 'succeeded')
+        throw new Error(
+          'File ' +
+            file.id +
+            ' parse state: ' +
+            file.parseState +
+            ': ' +
+            file.parseError,
+        );
+      const bytes = await readFile(resolve(this.uploadDir, file.storedName));
+      if (createHash('sha256').update(bytes).digest('hex') !== file.checksum)
+        throw new Error('文件摘要与保存版本不符');
+      const rule = configured.files.find((f) => f.role === file.kind);
+      if (!rule) throw new Error('当前方法不接受此文件角色');
+      const result = await runGemmi(
+        {
           action: 'inspect',
           path: resolve(this.uploadDir, file.storedName),
           parserId: rule.parserId,
           bindings: getCifBindings(profile),
-        });
-        facts.set(
-          `${file.kind}:${file.slot}`,
-          result.facts as Record<string, unknown>,
-        );
-        if (file.kind === 'COORDINATE') {
-          const expected = (
-            result as unknown as { records: ParsePatch['records'] }
-          ).records
-            .filter((r) => r.collection === 'molecules')
-            .map((r) => r.recordId)
-            .sort();
-          const actual = ((answers.molecules ?? []) as AnswerRecord[])
-            .map((r) => r.recordId)
-            .sort();
-          if (JSON.stringify(expected) !== JSON.stringify(actual))
-            throw new Error(
-              '当前坐标的实体键与问卷不一致，请明确处理旧记录后重新解析。',
-            );
-        }
-      } catch (e) {
-        content.state = 'failed';
-        content.issues.push({
-          code: 'file_processing_failed',
-          severity: 'error',
-          message: message(e),
-          fileId: String(file.id),
-          checkId: content.checkId,
-        });
+        },
+        this.gemmi,
+      );
+      facts.set(
+        `${file.kind}:${file.slot}`,
+        result.facts as Record<string, unknown>,
+      );
+      if (file.kind === 'COORDINATE') {
+        const expected = (
+          result as unknown as { records: ParsePatch['records'] }
+        ).records
+          .filter((r) => r.collection === 'molecules')
+          .map((r) => r.recordId)
+          .sort();
+        if (!Array.isArray(answers.molecules))
+          throw new Error('Coordinate entities are missing from questionnaire');
+        const actual = (answers.molecules as AnswerRecord[])
+          .map((r) => r.recordId)
+          .sort();
+        if (JSON.stringify(expected) !== JSON.stringify(actual))
+          throw new Error(
+            '当前坐标的实体键与问卷不一致，请明确处理旧记录后重新解析。',
+          );
       }
     }
     const half = files.filter((f) => f.kind === 'EM_HALF_MAP');
@@ -642,8 +635,9 @@ export class DepositionsService {
         throw new BadRequestException('附件内容变化，请重新上传并检查。');
     }
     let result: Record<string, unknown>;
-    try {
-      result = await runGemmi({
+
+    result = await runGemmi(
+      {
         action: 'export',
         basePath: resolve(this.uploadDir, coordinate.storedName + '.base.cif'),
         cifPath: resolve(this.uploadDir, cifName),
@@ -660,10 +654,10 @@ export class DepositionsService {
             role: f.kind,
             slot: f.slot,
           })),
-      });
-    } catch (e) {
-      throw new BadRequestException(`导出失败：${message(e)}`);
-    }
+      },
+      this.gemmi,
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await this.bump(tx, row, {
         status: 'SUBMITTED',
@@ -695,6 +689,14 @@ export class DepositionsService {
     return { content, name: row.code + '.zip' };
   }
   private file(f: FileRow) {
+    const parsed = f.parseResult as Record<string, unknown>;
+    if (
+      f.parseState === 'succeeded' &&
+      (!parsed.facts || typeof parsed.facts !== 'object')
+    )
+      throw new Error('Missing parsed facts for file ' + f.id);
+    if ('conflicts' in parsed && !Array.isArray(parsed.conflicts))
+      throw new Error('Missing merge result for file ' + f.id);
     return {
       id: f.id,
       kind: f.kind,
@@ -708,12 +710,15 @@ export class DepositionsService {
       createdAt: f.createdAt.toISOString(),
       parseState: f.parseState,
       parseError: f.parseError,
-      facts: (f.parseResult as Record<string, unknown>).facts ?? {},
-      conflicts: ((f.parseResult as Record<string, unknown>).conflicts ??
-        []) as string[],
+      facts: f.parseState === 'succeeded' ? parsed.facts : null,
+      conflicts: (f.parseResult as Record<string, unknown>)
+        .conflicts as string[],
     };
   }
   private summary(row: Row): DepositionSummary {
+    const title = (row.answers as Answers).title;
+    if (title !== undefined && typeof title !== 'string')
+      throw new Error('Invalid deposition title: ' + row.id);
     const checks = row.checks as unknown as CheckRun[];
     const missing = checks.flatMap((c) =>
       c.inputRevision === row.revision
@@ -726,12 +731,10 @@ export class DepositionsService {
       method: row.method,
       methods: row.methods,
       status: row.status,
-      title:
-        typeof (row.answers as Answers).title === 'string'
-          ? (row.answers as { title: string }).title
-          : '本地 demo',
+      title: title === undefined ? null : title,
       updatedAt: row.updatedAt.toISOString(),
-      submittedAt: row.submittedAt?.toISOString() ?? null,
+      submittedAt:
+        row.submittedAt === null ? null : row.submittedAt.toISOString(),
       completion: { completed: 0, total: 0, percent: 0, missing },
     };
   }

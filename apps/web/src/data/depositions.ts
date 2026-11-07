@@ -1,3 +1,4 @@
+import { httpError } from './http-error'
 import type {
   DepositionCreationOptions,
   DepositionDetail,
@@ -7,12 +8,7 @@ import type {
 import type { Answers } from '@onedep/shared/deposition'
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/depositions${path}`, init)
-  if (!response.ok) {
-    const body = (await response.json()) as { message?: string | string[] }
-    throw new Error(
-      Array.isArray(body.message) ? body.message.join('；') : (body.message ?? '请求失败'),
-    )
-  }
+  if (!response.ok) throw await httpError(response)
   return (response.status === 204 ? undefined : await response.json()) as T
 }
 const json = (data: unknown) => ({

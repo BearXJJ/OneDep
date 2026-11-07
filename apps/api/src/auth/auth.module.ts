@@ -1,3 +1,4 @@
+import { httpErrorProvider } from '../http-error.filter.js';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -8,6 +9,7 @@ import { SessionGuard } from './session.guard.js';
 @Module({
   controllers: [AuthController],
   providers: [
+    httpErrorProvider,
     AuthService,
     SessionGuard,
     { provide: APP_GUARD, useExisting: SessionGuard },
