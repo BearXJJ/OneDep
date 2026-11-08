@@ -1,5 +1,11 @@
 name: onedep-prod
 
+x-api-image: &api-image
+  image: ${ONEDEP_API_IMAGE:?Set ONEDEP_API_IMAGE in .env.production}
+  build:
+    context: .
+    target: api
+
 services:
   postgres:
     image: postgres:18-alpine
@@ -29,9 +35,9 @@ services:
       retries: 20
 
   migrate:
-    image: ghcr.io/bearxjj/onedep-api:main
+    <<: *api-image
     restart: 'no'
-    command: [pnpm, exec, prisma, migrate, deploy]
+    command: [pnpm, exec, prisma, migrate, deploy, --config, prisma7.config.ts]
     environment:
       DATABASE_URL: postgresql://onedep:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}@postgres:5432/onedep?schema=public
     depends_on:
@@ -39,7 +45,7 @@ services:
         condition: service_healthy
 
   api:
-    image: ghcr.io/bearxjj/onedep-api:main
+    <<: *api-image
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -48,6 +54,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       UPLOAD_DIR: /data/uploads
+      ONEDEP_PYTHON: ${ONEDEP_PYTHON:?Set ONEDEP_PYTHON in .env.production}
+      GEMMI_TIMEOUT_MS: ${GEMMI_TIMEOUT_MS:?Set GEMMI_TIMEOUT_MS in .env.production}
+      GEMMI_MAX_OUTPUT_BYTES: ${GEMMI_MAX_OUTPUT_BYTES:?Set GEMMI_MAX_OUTPUT_BYTES in .env.production}
     volumes:
       - uploads_data:/data/uploads
     depends_on:
@@ -63,10 +72,13 @@ services:
       start_period: 30s
 
   web:
-    image: ghcr.io/bearxjj/onedep-web:main
+    image: ${ONEDEP_WEB_IMAGE:?Set ONEDEP_WEB_IMAGE in .env.production}
+    build:
+      context: .
+      target: web
     restart: unless-stopped
     ports:
-      - '127.0.0.1:8080:80'
+      - '${WEB_BIND_ADDRESS:?Set WEB_BIND_ADDRESS in .env.production}:${WEB_PORT:?Set WEB_PORT in .env.production}:80'
     depends_on:
       api:
         condition: service_healthy

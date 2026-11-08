@@ -8,9 +8,13 @@ RUN HUSKY=0 DATABASE_URL=postgresql://unused:unused@localhost:5432/unused pnpm i
 RUN pnpm build
 
 FROM build AS api
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/onedep-python \
+    && /opt/onedep-python/bin/python -m pip install --no-cache-dir -r /app/apps/api/adapters/requirements.txt
 ENV NODE_ENV=production
 WORKDIR /app/apps/api
-USER root
 RUN mkdir -p /data/uploads && chown node:node /data/uploads
 USER node
 CMD ["node", "dist/main.js"]
