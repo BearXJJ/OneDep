@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { validateRuntimeConfig } from './runtime-config.js';
 const configured = () => ({
+  LLM_ENDPOINT: 'https://example.test/v1/responses',
+  LLM_MODEL: 'test',
+  LLM_API_KEY: 'test-key',
+  LLM_MAX_OUTPUT_TOKENS: '1200',
+  LLM_TIMEOUT_MS: '60000',
   NODE_ENV: 'test',
   PORT: '13000',
   DATABASE_URL: 'postgresql://test:test@127.0.0.1:15432/test',

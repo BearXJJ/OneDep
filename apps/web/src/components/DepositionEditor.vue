@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import StepAlong from '@/copilot/StepAlong.vue'
+import type { Snapshot } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
@@ -35,6 +37,8 @@ const props = defineProps<{ deposition: DepositionDetail }>()
 const emit = defineEmits<{ changed: [value: DepositionDetail]; back: [] }>()
 const router = useRouter(),
   auth = useAuthStore()
+const content = ref<HTMLElement>()
+const renderedQuestions = new Map<string, { question: SurveyQuestion; element: HTMLElement }>()
 const current = ref(props.deposition),
   tab = ref('summary'),
   selection = ref('summary'),
@@ -63,6 +67,7 @@ function hasDemo(element: Element): boolean {
   return element.x.demo === true
 }
 function configure() {
+  renderedQuestions.clear()
   const survey = model.value
   survey.questionTitleLocation = 'left'
   survey.applyTheme({
@@ -89,6 +94,11 @@ function configure() {
   survey.onDynamicPanelRemoved.add(changed)
   survey.onDynamicPanelAdded.add(changed)
   survey.onAfterRenderQuestion.add((_, event) => {
+    event.htmlElement.dataset.stepalongQuestion = event.question.name
+    renderedQuestions.set(event.htmlElement.id, {
+      question: event.question,
+      element: event.htmlElement,
+    })
     const meta = metadata.value.get(event.question.name)
     if (meta && !hasDemo(meta)) event.htmlElement.classList.add('outside-demo-field')
     const header = event.htmlElement.querySelector('.sd-question__header')
@@ -401,6 +411,72 @@ function stateLabel(state: string) {
   if (label === undefined) throw new Error('Unknown processing state: ' + state)
   return label
 }
+function readCopilotSnapshot(focusId: string | null): Snapshot {
+  const root = content.value
+  if (!root) throw new Error('Missing deposition content')
+  const visible = (el: HTMLElement) => {
+    const rect = el.getBoundingClientRect()
+    return (
+      el.isConnected &&
+      rect.height > 0 &&
+      rect.bottom > 0 &&
+      rect.top < innerHeight &&
+      rect.right > 0 &&
+      rect.left < innerWidth &&
+      getComputedStyle(el).visibility !== 'hidden'
+    )
+  }
+  const fields: Snapshot['fields'] = [],
+    errors: Snapshot['errors'] = []
+  for (const [targetId, { question: q, element }] of renderedQuestions) {
+    if (!visible(element) || q.getType() === 'paneldynamic') continue
+    const empty = q.isEmpty(),
+      invalid = q.errors.length > 0
+    fields.push({
+      targetId,
+      label: q.title,
+      type: q.getType(),
+      required: q.isRequired,
+      disabled: q.isReadOnly,
+      value: empty ? '' : String(q.displayValue),
+      empty,
+      valid: !invalid,
+      websiteInvalid: invalid,
+    })
+    for (const error of q.errors) errors.push({ targetId, text: error.getText() })
+  }
+  const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+    .filter(visible)
+    .map((button, index) => {
+      if (!button.id) button.id = 'stepalong-' + tab.value + '-button-' + index
+      return { targetId: button.id, label: button.innerText.trim(), disabled: button.disabled }
+    })
+  return {
+    page: tab.value,
+    title: pageTitle.value,
+    fields,
+    errors,
+    buttons,
+    focusId,
+    notices: notice.value ? [notice.value] : [],
+    busy: busy.value,
+    text: JSON.stringify({
+      deposition: current.value.code,
+      status: current.value.status,
+      revision: current.value.revision,
+      unsaved: dirty.value,
+      summary: Array.from(root.querySelectorAll<HTMLElement>('table, .file-card, .check-card'))
+        .filter(visible)
+        .map((el) => el.innerText),
+      files: current.value.files.map((f) => ({
+        name: f.originalName,
+        kind: f.kind,
+        parseState: f.parseState,
+      })),
+      checks: current.value.checks,
+    }),
+  }
+}
 </script>
 <template>
   <article class="editor onedep-workspace">
@@ -446,7 +522,14 @@ function stateLabel(state: string) {
         <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
         <button class="logout-button" :disabled="busy" @click="logout">Log out</button>
       </aside>
-      <main class="editor-content" :aria-busy="busy">
+      <main
+        id="deposition-content"
+        ref="content"
+        class="editor-content"
+        :data-page="tab"
+        :data-revision="version"
+        :aria-busy="busy"
+      >
         <h1 class="section-heading">{{ pageTitle }}</h1>
         <section v-if="tab === 'welcome'" class="instructions">
           <h2>Welcome to OneDep</h2>
@@ -692,6 +775,13 @@ function stateLabel(state: string) {
         </div>
       </main>
     </div>
+    <StepAlong
+      v-if="content"
+      :key="current.id"
+      :root="content"
+      :deposition-id="current.id"
+      :read-snapshot="readCopilotSnapshot"
+    />
     <footer class="editor-footer"><InfoFilled />OneDep · {{ current.code }}</footer>
   </article>
 </template>

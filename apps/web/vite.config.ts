@@ -9,6 +9,9 @@ export default defineConfig(({ mode, command }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@onedep/shared/copilot': fileURLToPath(
+          new URL('../../packages/shared/src/copilot.ts', import.meta.url),
+        ),
         '@onedep/shared/deposition': fileURLToPath(
           new URL('../../packages/shared/src/deposition/index.ts', import.meta.url),
         ),

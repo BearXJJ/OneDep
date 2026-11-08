@@ -1,3 +1,5 @@
+import type { Response } from 'express';
+import { CopilotService } from './copilot.service.js';
 import {
   Body,
   Controller,
@@ -10,6 +12,7 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   Query,
   StreamableFile,
   UploadedFile,
@@ -26,7 +29,27 @@ import {
 @Roles('SUBMITTER')
 @Controller('depositions')
 export class DepositionsController {
-  constructor(private readonly depositions: DepositionsService) {}
+  constructor(
+    private readonly depositions: DepositionsService,
+    private readonly copilot: CopilotService,
+  ) {}
+  @Post(':id/copilot')
+  async advise(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.depositions.get(id, request.authUser);
+    const controller = new AbortController();
+    const disconnect = () => controller.abort();
+    response.once('close', disconnect);
+    try {
+      return await this.copilot.advise(body, controller.signal);
+    } finally {
+      response.off('close', disconnect);
+    }
+  }
 
   @Get()
   list(@Req() request: AuthenticatedRequest) {

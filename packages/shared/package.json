@@ -9,6 +9,10 @@
     "./deposition": {
       "types": "./dist/deposition/index.d.ts",
       "import": "./dist/deposition/index.js"
+    },
+    "./copilot": {
+      "import": "./dist/copilot.js",
+      "types": "./dist/copilot.d.ts"
     }
   },
   "dependencies": {

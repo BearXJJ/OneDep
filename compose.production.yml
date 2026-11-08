@@ -48,6 +48,11 @@ services:
     <<: *api-image
     restart: unless-stopped
     environment:
+      LLM_ENDPOINT: ${LLM_ENDPOINT:?Set LLM_ENDPOINT in .env.production}
+      LLM_MODEL: ${LLM_MODEL:?Set LLM_MODEL in .env.production}
+      LLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY in .env.production}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:?Set LLM_MAX_OUTPUT_TOKENS in .env.production}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:?Set LLM_TIMEOUT_MS in .env.production}
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://onedep:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}@postgres:5432/onedep?schema=public
