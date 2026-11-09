@@ -1,6 +1,8 @@
 import {t} from '../locales'
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { SurveyComponent } from 'survey-vue3-ui'
+import type { Model } from 'survey-core'
 import { createPinia, setActivePinia } from 'pinia'
 import type { AdminUser, DepositionDetail } from '@onedep/shared'
 
@@ -570,5 +572,40 @@ it('tracks each molecule separately and advances from the selected molecule', as
     .find((b) => b.text() === t('Continue to next section'))!
     .trigger('click')
   expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(t('Crystal information'))
+  wrapper.unmount()
+})
+
+
+it('keeps saved answers clean after a same-value form event and detects real edits', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const wrapper = mount(DepositionEditor, {
+    props: {
+      deposition: {
+        ...depositionFixture,
+        answers: {
+          molecules: [{ name: 'FtsZ', recordId: 'a', entityType: 'polymer' }],
+        },
+      },
+    },
+    global: { plugins: [pinia, router], stubs: { Survey: true, SurveyComponent: true } },
+  })
+  await wrapper.findAll('.tree-item').find((node) => node.text() === '1) FtsZ')!.trigger('click')
+  await flushPromises()
+  const model = wrapper.findComponent(SurveyComponent).props('model') as Model
+  model.onValueChanged.fire(model, {
+    name: 'molecules',
+    value: model.getValue('molecules'),
+    question: model.getQuestionByName('molecules'),
+    reason: undefined,
+  })
+  await flushPromises()
+  expect(wrapper.find('.editor-toolbar button').text()).toBe(t('Save'))
+  model.setValue('title', 'Edited title')
+  await flushPromises()
+  expect(wrapper.find('.editor-toolbar button').text()).toBe(t('Save') + ' *')
+  model.clearValue('title')
+  await flushPromises()
+  expect(wrapper.find('.editor-toolbar button').text()).toBe(t('Save'))
   wrapper.unmount()
 })

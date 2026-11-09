@@ -8,7 +8,7 @@ import type { Snapshot, Suggestion } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
-import { QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
+import { Helpers, QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
 import { ArrowRight, Back, Download, Refresh, Delete, InfoFilled } from '@element-plus/icons-vue'
 import 'survey-core/survey-core.css'
 import type { DepositionDetail, DepositionFileKind } from '@onedep/shared'
@@ -95,7 +95,12 @@ function configure() {
   survey.showNavigationButtons = false
   survey.mode = editable.value ? 'edit' : 'display'
   const changed = () => {
-    dirty.value = true
+    dirty.value = !Helpers.checkIfValuesEqual(survey.data, current.value.answers, {
+      ignoreOrder: false,
+      caseSensitive: true,
+      trimStrings: false,
+      doNotConvertNumbers: true,
+    })
     version.value++
   }
   survey.onValueChanged.add(changed)
