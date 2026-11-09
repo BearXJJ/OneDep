@@ -30,8 +30,10 @@ jobs:
           target: ${{ matrix.target }}
           platforms: linux/amd64
           push: true
+          cache-from: type=gha,scope=onedep-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=onedep-${{ matrix.target }}
           tags: |
-            ghcr.io/bearxjj/onedep-${{ matrix.target }}:main
+            ${{ github.ref == 'refs/heads/main' && format('ghcr.io/bearxjj/onedep-{0}:main', matrix.target) || '' }}
             ghcr.io/bearxjj/onedep-${{ matrix.target }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/BearXJJ/OneDep
