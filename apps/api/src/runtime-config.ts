@@ -60,10 +60,10 @@ export function validateRuntimeConfig(input: Record<string, unknown>) {
   const endpoint = new URL(String(env.LLM_ENDPOINT));
   if (
     !['https:', 'http:'].includes(endpoint.protocol) ||
-    !endpoint.pathname.endsWith('/responses') ||
+    !endpoint.pathname.endsWith('/chat/completions') ||
     endpoint.username ||
     endpoint.password
   )
-    throw new Error('LLM_ENDPOINT must be the full Responses API URL');
+    throw new Error('LLM_ENDPOINT must be the full Chat Completions API URL');
   return env;
 }
