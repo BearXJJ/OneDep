@@ -83,7 +83,7 @@ function configure() {
     cssVariables: {
       '--sjs-font-family': 'Arial, sans-serif',
       '--sjs-font-size': '14px',
-      '--sjs-base-unit': '4px',
+      '--sjs-base-unit': '3px',
       '--sjs-general-backcolor': 'var(--dep-panel)',
       '--sjs-general-backcolor-dim': 'var(--dep-panel)',
       '--sjs-primary-backcolor': 'var(--dep-success)',
@@ -206,10 +206,7 @@ const logout = () =>
     await auth.logout()
     await router.push('/login')
   })
-function upload(role: string, slot: number, event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+function uploadFile(role: string, slot: number, file: File) {
   return action(async () => {
     await saved()
     accept(
@@ -222,8 +219,29 @@ function upload(role: string, slot: number, event: Event) {
       ),
     )
     notice.value = 'File uploaded and parsed'
-    input.value = ''
   })
+}
+async function upload(role: string, slot: number, event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files?.length) {
+    await uploadFile(role, slot, input.files[0]!)
+    input.value = ''
+  }
+}
+const dragTarget = ref('')
+function dragOver(role: string, slot: number, event: DragEvent) {
+  if (!editable.value || busy.value) return
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+    dragTarget.value = role + ':' + slot
+  }
+}
+async function dropFile(role: string, slot: number, event: DragEvent) {
+  dragTarget.value = ''
+  if (!editable.value || busy.value) return
+  if (!event.dataTransfer || event.dataTransfer.files.length !== 1)
+    throw new Error(t('Drop one file into each upload slot'))
+  await uploadFile(role, slot, event.dataTransfer.files[0]!)
 }
 const reparse = (id: number) =>
   action(async () => {
@@ -659,7 +677,17 @@ function applySuggestion(suggestion: Suggestion) {
               v-for="slot in rule.max"
               :key="slot"
               class="file-slot"
+              :class="{
+                'drag-over': dragTarget === rule.role + ':' + slot,
+                'upload-disabled': busy || !editable,
+              }"
+              @dragover.prevent="dragOver(rule.role, slot, $event)"
+              @dragleave="dragTarget = ''"
+              @drop.prevent="dropFile(rule.role, slot, $event)"
             >
+              <span v-if="editable" class="drop-hint">{{
+                t('Drag a file here or choose a file')
+              }}</span>
               <span v-if="rule.max > 1">{{ slot }}</span
               ><template v-if="fileOf(rule.role, slot)"
                 ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
