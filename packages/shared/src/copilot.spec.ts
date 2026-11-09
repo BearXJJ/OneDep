@@ -14,19 +14,23 @@ const snapshot: Snapshot = {
   text: "",
 };
 const reply = (targetId: string) => ({
-  choices: [
+  status: "completed",
+  output: [
+    { type: "reasoning" },
     {
-      finish_reason: "stop",
-      message: {
-        role: "assistant",
-        content: JSON.stringify({
-          title: "Save draft",
-          message: "Save the contact information.",
-          targetId,
-          suggestions: [],
-          question: null,
-        }),
-      },
+      type: "message",
+      content: [
+        {
+          type: "output_text",
+          text: JSON.stringify({
+            title: "Save draft",
+            message: "Save the contact information.",
+            targetId,
+            suggestions: [],
+            question: null,
+          }),
+        },
+      ],
     },
   ],
 });
@@ -38,12 +42,23 @@ describe("Copilot response binding", () => {
     );
   });
   it("rejects incomplete responses and invalid JSON without fabricated advice", () => {
-    const incomplete = reply("save");
-    incomplete.choices[0]!.finish_reason = "length";
-    expect(() => parseAdvice(incomplete, snapshot)).toThrow();
-    const invalid = reply("save");
-    invalid.choices[0]!.message.content = "建议：填写分子名称";
-    expect(() => parseAdvice(invalid, snapshot)).toThrow();
+    expect(() =>
+      parseAdvice({ ...reply("save"), status: "incomplete" }, snapshot),
+    ).toThrow();
+    expect(() =>
+      parseAdvice(
+        {
+          status: "completed",
+          output: [
+            {
+              type: "message",
+              content: [{ type: "output_text", text: "not JSON" }],
+            },
+          ],
+        },
+        snapshot,
+      ),
+    ).toThrow();
   });
 });
 
@@ -69,26 +84,29 @@ it("rejects suggestions with invented sources or unsupported choices", () => {
     evidence: [{ id: "beamline", source: "CIF", text: "RRCAT BL-21" }],
   };
   const response = (value: string, evidenceIds: string[]) => ({
-    choices: [
+    status: "completed",
+    output: [
       {
-        finish_reason: "stop",
-        message: {
-          role: "assistant",
-          content: JSON.stringify({
-            title: "Source",
-            message: "From the beamline.",
-            targetId: "source",
-            question: null,
-            suggestions: [
-              {
-                targetId: "source",
-                value,
-                reason: "Beamline identifies synchrotron",
-                evidenceIds,
-              },
-            ],
-          }),
-        },
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: JSON.stringify({
+              title: "Source",
+              message: "From the beamline.",
+              targetId: "source",
+              question: null,
+              suggestions: [
+                {
+                  targetId: "source",
+                  value,
+                  reason: "Beamline identifies synchrotron",
+                  evidenceIds,
+                },
+              ],
+            }),
+          },
+        ],
       },
     ],
   });

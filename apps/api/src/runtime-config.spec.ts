@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateRuntimeConfig } from './runtime-config.js';
 const configured = () => ({
-  LLM_ENDPOINT: 'https://example.test/v1/chat/completions',
+  LLM_ENDPOINT: 'https://example.test/v1/responses',
   LLM_MODEL: 'test',
   LLM_API_KEY: 'test-key',
   LLM_MAX_OUTPUT_TOKENS: '1200',

@@ -61,20 +61,37 @@ export type Mode = "next" | "explain" | "check";
 export function parseAdvice(response: unknown, snapshot: Snapshot): Advice {
   const envelope = z
     .object({
-      choices: z.tuple([
+      status: z.literal("completed"),
+      output: z.array(
         z.object({
-          finish_reason: z.literal("stop"),
-          message: z.object({
-            role: z.literal("assistant"),
-            content: z.string().min(1),
-          }),
+          type: z.string(),
+          content: z
+            .array(
+              z.object({
+                type: z.string(),
+                text: z.string().optional(),
+                refusal: z.string().optional(),
+              }),
+            )
+            .optional(),
         }),
-      ]),
+      ),
     })
     .parse(response);
-  const advice = adviceSchema.parse(
-    JSON.parse(envelope.choices[0].message.content),
-  );
+  const texts: string[] = [];
+  for (const item of envelope.output) {
+    if (item.type !== "message") continue;
+    if (!item.content) throw new Error("Responses message has no content");
+    for (const part of item.content) {
+      if (part.type === "refusal") throw new Error(part.refusal);
+      if (part.type === "output_text") {
+        if (part.text === undefined)
+          throw new Error("Responses output_text has no text");
+        texts.push(part.text);
+      }
+    }
+  }
+  const advice = adviceSchema.parse(JSON.parse(texts.join("\n")));
   if (
     advice.targetId !== null &&
     ![...snapshot.fields, ...snapshot.buttons, ...snapshot.errors].some(
