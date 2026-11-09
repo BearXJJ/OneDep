@@ -257,6 +257,7 @@ interface MissingItem {
 }
 const statistics = computed(() => {
   void version.value
+  const records: Record<string, PageProgress> = {}
   const pages: Record<string, PageProgress> = {},
     missing: MissingItem[] = []
   for (const p of model.value.pages) {
@@ -267,10 +268,27 @@ const statistics = computed(() => {
       requiredCompleted: 0,
       extra: !definition.value.pages.find((page) => page.name === p.name)!.elements.some(hasDemo),
     }
-    function count(q: SurveyQuestion) {
+    function count(q: SurveyQuestion, stats: PageProgress) {
       if (!q.isVisible || !q.isParentVisible || q.name === 'recordId') return
       if (q instanceof QuestionPanelDynamicModel) {
-        if (q.panels.length) q.panels.forEach((panel) => panel.questions.forEach(count))
+        if (q.panels.length)
+          q.panels.forEach((panel) => {
+            const recordStats: PageProgress = {
+              total: 0,
+              completed: 0,
+              required: 0,
+              requiredCompleted: 0,
+              extra: true,
+            }
+            panel.questions.forEach((question) => count(question, recordStats))
+            const recordId = panel.getQuestionByName('recordId').value
+            records[q.name + ':' + recordId] = recordStats
+            stats.total += recordStats.total
+            stats.completed += recordStats.completed
+            stats.required += recordStats.required
+            stats.requiredCompleted += recordStats.requiredCompleted
+            if (!recordStats.extra) stats.extra = false
+          })
         else {
           stats.total++
           if (q.isRequired || q.template.questions.some((c) => c.isRequired)) {
@@ -291,7 +309,7 @@ const statistics = computed(() => {
         else missing.push({ page: p.name, title: q.title, question: q })
       }
     }
-    p.questions.forEach(count)
+    p.questions.forEach((q) => count(q, stats))
     pages[p.name] = stats
   }
   const files = definition.value.files.reduce((n, r) => n + r.min, 0),
@@ -307,7 +325,10 @@ const statistics = computed(() => {
   for (const rule of definition.value.files)
     for (let slot = 1; slot <= rule.min; slot++)
       if (!fileOf(rule.role, slot))
-        missing.unshift({ page: 'uploads', title: rule.title + (rule.max > 1 ? ' ' + slot : '') })
+        missing.unshift({
+          page: 'uploads',
+          title: t(rule.title) + (rule.max > 1 ? ' ' + slot : ''),
+        })
   const unique = Object.entries(pages)
     .filter(([name]) => !['summary', 'message', 'ligandsummary'].includes(name))
     .map(([, s]) => s)
@@ -317,6 +338,7 @@ const statistics = computed(() => {
     requiredComplete = unique.reduce((n, s) => n + s.requiredCompleted, 0)
   return {
     pages,
+    records,
     missing,
     total,
     complete,
@@ -332,6 +354,7 @@ const navigation = computed(() => {
     getNavigation(current.value.profile),
     model.value.data as Answers,
     statistics.value.pages,
+    statistics.value.records,
   )
 })
 const navPages = computed(() => {
@@ -348,12 +371,16 @@ const navPages = computed(() => {
 const pageTitle = computed(() => {
   if (tab.value === 'requirements') return t('List requirements')
   if (tab.value === 'origins') return t('Field sources')
-  const n = navPages.value.find((n) => n.page === tab.value)
+  const n = navPages.value.find(
+    (n) => n.id === selection.value || (selection.value === tab.value && n.page === tab.value),
+  )
   if (!n) throw new Error('Unknown navigation page: ' + tab.value)
   return n.title
 })
 function nextPage() {
-  const index = navPages.value.findIndex((n) => n.id === selection.value || n.page === tab.value)
+  const index = navPages.value.findIndex(
+    (n) => n.id === selection.value || (selection.value === tab.value && n.page === tab.value),
+  )
   const next = navPages.value[index + 1]
   if (next) selectItem(next)
 }

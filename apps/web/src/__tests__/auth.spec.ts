@@ -1,9 +1,11 @@
+import {t} from '../locales'
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import type { AdminUser, DepositionDetail } from '@onedep/shared'
 
 import App from '../App.vue'
+import DepositionEditor from '../components/DepositionEditor.vue'
 import DepositionMethodSelector from '../components/DepositionMethodSelector.vue'
 import ProfileSettings from '../components/ProfileSettings.vue'
 import router from '../router'
@@ -258,7 +260,7 @@ it('opens an existing deposition without cloning the Vue proxy directly', async 
   expect(wrapper.find('.editor header').text()).toContain('D_6248357552')
   await wrapper
     .findAll('.tree-item')
-    .find((node) => node.text() === 'Re-upload files')!
+    .find((node) => node.text() === t('Re-upload files'))!
     .trigger('click')
   await flushPromises()
   expect(wrapper.text()).toContain('坐标模型')
@@ -527,4 +529,46 @@ it('propagates session server failures without treating them as logout', async (
   await expect(auth.restore()).rejects.toThrow('Redis unavailable')
   expect(auth.initialized).toBe(false)
   expect(auth.user.email).toBe('alice@example.test')
+})
+
+it('tracks each molecule separately and advances from the selected molecule', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const wrapper = mount(DepositionEditor, {
+    props: {
+      deposition: {
+        ...depositionFixture,
+        answers: {
+          molecules: [
+            {
+              recordId: 'a',
+              name: 'Complete molecule',
+              entityType: 'polymer',
+              polymerType: 'polypeptide(L)',
+              sequence: 'MG',
+              pdbx_depui_entity_features__type: 'None of these',
+            },
+            { recordId: 'b', name: 'Incomplete molecule', entityType: 'polymer' },
+          ],
+        },
+      },
+    },
+    global: { plugins: [pinia, router], stubs: { Survey: true, SurveyComponent: true } },
+  })
+  await flushPromises()
+  const first = wrapper.findAll('.tree-item').find((x) => x.text() === '1) Complete molecule')!
+  const second = wrapper.findAll('.tree-item').find((x) => x.text() === '2) Incomplete molecule')!
+  expect(first.find('.tree-status').classes()).toContain('complete')
+  expect(second.find('.tree-status').classes()).toContain('missing')
+  await second.trigger('click')
+  await flushPromises()
+  expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(
+    '2) Incomplete molecule',
+  )
+  await wrapper
+    .findAll('button')
+    .find((b) => b.text() === t('Continue to next section'))!
+    .trigger('click')
+  expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(t('Crystal information'))
+  wrapper.unmount()
 })
