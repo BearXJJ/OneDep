@@ -19,7 +19,7 @@ const clipStyle = computed(() =>
 )
 let observer: ResizeObserver
 onMounted(() => {
-  if (!host.value) throw new Error('Missing StepAlong surface')
+  if (!host.value) throw new Error('Missing Copilot surface')
   observer = new ResizeObserver((entries) => {
     const entry = entries[0]!
     const box = entry.borderBoxSize[0]!

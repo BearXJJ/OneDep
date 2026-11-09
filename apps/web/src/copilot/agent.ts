@@ -1,13 +1,16 @@
+import { t } from '@/locales'
+import type { CopilotConfig, Suggestion } from '@onedep/shared/copilot'
 import type { AgentState, Mode, Snapshot } from './types'
 import { callResponses } from './responses'
 import { fingerprint } from './responses'
 
-/** Prefetch after two seconds; hint only after a current LLM reply and five idle seconds. */
+/** The API owns the request cadence; animation timings remain local. */
 export class Agent {
   constructor(
     private readonly root: HTMLElement,
     private readonly depositionId: number,
     private readonly readSnapshot: (focus: string | null) => Snapshot,
+    private readonly config: CopilotConfig,
   ) {}
   private state: AgentState = {
     view: 'intro',
@@ -36,6 +39,8 @@ export class Agent {
   private snapshotKey = ''
   private attemptedKey = ''
   private cacheKey = ''
+  private cacheMode: Mode = 'next'
+  private nextRequestAt = 0
   private resultScrollY = 0
   private cacheResult: AgentState['result'] = null
   private timer: ReturnType<typeof setInterval> | null = null
@@ -78,11 +83,11 @@ export class Agent {
     listen('focusin', ((e: Event) => {
       const el = e.target as HTMLElement
       if (el?.closest('#deposition-content') && el.matches('input,select,textarea')) {
-        const target = el.closest<HTMLElement>('[data-stepalong-question]')
+        const target = el.closest<HTMLElement>('[data-copilot-question]')
         this.focusId = target === null ? el.id : target.id
         if (this.state.mode === 'explain') {
           this.invalidate()
-          if (this.state.view === 'panel') this.request('explain', true)
+          if (this.state.view === 'panel') this.pageChanged()
         }
       }
     }) as EventListener)
@@ -181,25 +186,32 @@ export class Agent {
     if (this.disposed || document.hidden) return
     const idle = performance.now() - this.lastActivity
     if (
-      Math.floor(Math.min(idle, 5000) / 100) !== Math.floor(this.state.idle / 100) &&
+      Math.floor(Math.min(idle, this.config.hintIdleMs) / 100) !==
+        Math.floor(this.state.idle / 100) &&
       !['panel', 'settings'].includes(this.state.view)
     )
-      this.patch({ idle: Math.min(idle, 5000) })
+      this.patch({ idle: Math.min(idle, this.config.hintIdleMs) })
     if (['panel', 'settings'].includes(this.state.view)) return
     if (
-      idle >= 5000 &&
+      idle >= this.config.hintIdleMs &&
       this.state.phase === 'ready' &&
       this.cacheResult &&
       this.cacheKey === fingerprint(this.readSnapshot(this.focusId)) &&
       this.state.view !== 'hint'
     ) {
       this.toward = null
-      this.patch({ view: 'hint', idle: 5000 })
+      this.patch({ view: 'hint', idle: this.config.hintIdleMs })
     }
-    if (idle >= 2000) {
+    if (this.config.autoEnabled && idle >= this.config.idleMs) {
       const s = this.readSnapshot(this.focusId),
         key = fingerprint(s)
-      if (!s.busy && key !== this.attemptedKey && !this.inFlight) this.request('next', false, s)
+      if (
+        !s.busy &&
+        s.fields.some((f) => f.canSuggest && !f.disabled) &&
+        key !== this.attemptedKey &&
+        !this.inFlight
+      )
+        this.request('next', false, s)
     }
   }
   private cancelRequest() {
@@ -231,11 +243,15 @@ export class Agent {
     this.lastActivity = performance.now()
     this.invalidate()
     if (this.pageDebounce) clearTimeout(this.pageDebounce)
-    if (this.state.view === 'panel')
+    if (this.config.autoEnabled && this.state.view === 'panel')
       this.pageDebounce = setTimeout(() => {
-        if (this.state.view === 'panel' && !this.readSnapshot(this.focusId).busy)
+        if (
+          this.state.view === 'panel' &&
+          !this.readSnapshot(this.focusId).busy &&
+          this.readSnapshot(this.focusId).fields.some((f) => f.canSuggest && !f.disabled)
+        )
           this.request(this.state.mode, true)
-      }, 450)
+      }, this.config.debounceMs)
   }
   open() {
     this.patch({ view: 'panel' })
@@ -259,7 +275,25 @@ export class Agent {
   }
   async request(mode: Mode, manual: boolean, snapshot = this.readSnapshot(this.focusId)) {
     const key = fingerprint(snapshot)
-    if (!manual && this.inFlight) return
+    if (this.cacheResult && this.cacheKey === key && this.cacheMode === mode) {
+      this.patch({ result: this.cacheResult, phase: 'ready', mode })
+      return
+    }
+    if (this.inFlight) return
+    if (performance.now() < this.nextRequestAt) {
+      if (manual)
+        this.patch({
+          phase: 'error',
+          error:
+            t('Next model request in') +
+            ' ' +
+            Math.ceil((this.nextRequestAt - performance.now()) / 1000) +
+            ' ' +
+            t('seconds.'),
+        })
+      return
+    }
+    this.nextRequestAt = performance.now() + this.config.minIntervalMs
     this.cancelRequest()
     const generation = ++this.generation
     const controller = new AbortController()
@@ -271,7 +305,7 @@ export class Agent {
     const timeout = setTimeout(() => {
       timedOut = true
       controller.abort()
-    }, 60000)
+    }, this.config.timeoutMs)
     try {
       const answer = await callResponses(this.depositionId, snapshot, mode, controller.signal)
       if (this.disposed) return
@@ -283,6 +317,7 @@ export class Agent {
         this.patch({ discarded: this.state.discarded + 1 })
         return
       }
+      this.cacheMode = mode
       this.cacheResult = answer
       this.cacheKey = key
       this.resultScrollY = scrollY
@@ -294,7 +329,7 @@ export class Agent {
         phase: 'error',
         result: null,
         error: timedOut
-          ? 'Request timed out. Try again.'
+          ? t('Request timed out. Try again.')
           : error instanceof Error
             ? error.message
             : String(error),
@@ -303,6 +338,16 @@ export class Agent {
       clearTimeout(timeout)
       if (this.inFlight?.generation === generation) this.inFlight = null
     }
+  }
+  apply(suggestion: Suggestion, write: (s: Suggestion) => void) {
+    if (
+      !this.cacheResult ||
+      this.cacheKey !== fingerprint(this.readSnapshot(this.focusId)) ||
+      !this.cacheResult.suggestions.includes(suggestion)
+    )
+      throw new Error('Suggestion expired after a form change')
+    write(suggestion)
+    this.pageChanged()
   }
   dispose() {
     this.disposed = true

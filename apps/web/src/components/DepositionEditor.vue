@@ -3,8 +3,8 @@ import { t, locale } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import LanguageSwitch from './LanguageSwitch.vue'
 import CommunicationPanel from './CommunicationPanel.vue'
-import StepAlong from '@/copilot/StepAlong.vue'
-import type { Snapshot } from '@onedep/shared/copilot'
+import Copilot from '@/copilot/Copilot.vue'
+import type { Snapshot, Suggestion } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
@@ -14,6 +14,8 @@ import 'survey-core/survey-core.css'
 import type { DepositionDetail, DepositionFileKind } from '@onedep/shared'
 import {
   createQuestionnaire,
+  flattenAnswers,
+  addressKey,
   getProfileDefinition,
   getNavigation,
   type Answers,
@@ -75,6 +77,7 @@ function configure() {
   const survey = model.value
   localizeSurvey(survey, current.value.profile)
   survey.questionTitleLocation = 'left'
+  survey.textUpdateMode = 'onTyping'
   survey.applyTheme({
     isPanelless: true,
     cssVariables: {
@@ -99,7 +102,7 @@ function configure() {
   survey.onDynamicPanelRemoved.add(changed)
   survey.onDynamicPanelAdded.add(changed)
   survey.onAfterRenderQuestion.add((_, event) => {
-    event.htmlElement.dataset.stepalongQuestion = event.question.name
+    event.htmlElement.dataset.copilotQuestion = event.question.name
     renderedQuestions.set(event.htmlElement.id, {
       question: event.question,
       element: event.htmlElement,
@@ -443,6 +446,15 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
       targetId,
       label: q.title,
       type: q.getType(),
+      help: q.description,
+      canSuggest: ['text', 'comment', 'dropdown', 'radiogroup'].includes(q.getType()),
+      choices:
+        'visibleChoices' in q
+          ? (q.visibleChoices as { value: unknown; text: string }[]).map((c) => ({
+              value: String(c.value),
+              label: c.text,
+            }))
+          : [],
       required: q.isRequired,
       disabled: q.isReadOnly,
       value: empty ? '' : String(q.displayValue),
@@ -455,13 +467,48 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
   const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
     .filter(visible)
     .map((button, index) => {
-      if (!button.id) button.id = 'stepalong-' + tab.value + '-button-' + index
+      if (!button.id) button.id = 'copilot-' + tab.value + '-button-' + index
       return { targetId: button.id, label: button.innerText.trim(), disabled: button.disabled }
     })
   return {
+    language: locale.value,
     page: tab.value,
     title: pageTitle.value,
     fields,
+    evidence: [
+      ...flattenAnswers(model.value.data as Answers)
+        .filter(
+          ({ address, value }) =>
+            !/sequence|communication/i.test(address.field) &&
+            value !== null &&
+            value !== '' &&
+            JSON.stringify(value).length <= 1000,
+        )
+        .map(({ address, value }) => {
+          const origin = current.value.origins.find(
+            (o) => addressKey(o.address) === addressKey(address),
+          )
+          const saved = flattenAnswers(current.value.answers).find(
+            (v) => addressKey(v.address) === addressKey(address),
+          )
+          const fromFile =
+            origin?.source === 'file' && JSON.stringify(saved?.value) === JSON.stringify(value)
+          return {
+            id: 'answer:' + addressKey(address),
+            source: fromFile
+              ? 'File ' + origin.fileId + ' / ' + origin.tag
+              : 'Current form: ' + addressKey(address),
+            text: JSON.stringify(value),
+          }
+        }),
+      ...current.value.files
+        .filter((f) => f.parseState === 'succeeded')
+        .map((f) => ({
+          id: 'file:' + f.id,
+          source: f.originalName + ' revision ' + f.revision,
+          text: JSON.stringify(f.facts),
+        })),
+    ],
     errors,
     buttons,
     focusId,
@@ -483,6 +530,27 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
       checks: current.value.checks,
     }),
   }
+}
+function applySuggestion(suggestion: Suggestion) {
+  const target = renderedQuestions.get(suggestion.targetId)
+  if (!target || !target.element.isConnected || !editable.value)
+    throw new Error('Suggestion target is no longer editable')
+  const q = target.question
+  const field = readCopilotSnapshot(null).fields.find((f) => f.targetId === suggestion.targetId)
+  if (!field || field.disabled || !field.canSuggest)
+    throw new Error('Suggestion target is no longer available')
+  if (field.choices.length) {
+    const choice = (
+      q as SurveyQuestion & { visibleChoices: { value: unknown }[] }
+    ).visibleChoices.find((c) => String(c.value) === suggestion.value)
+    if (!choice) throw new Error('Suggestion choice does not exist')
+    q.value = choice.value
+  } else if ('inputType' in q && q.inputType === 'number') {
+    const value = Number(suggestion.value)
+    if (!suggestion.value.trim() || !Number.isFinite(value))
+      throw new Error('Suggestion must be numeric')
+    q.value = value
+  } else q.value = suggestion.value
 }
 </script>
 <template>
@@ -804,12 +872,13 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
         </div>
       </main>
     </div>
-    <StepAlong
+    <Copilot
       v-if="content"
       :key="current.id"
       :root="content"
       :deposition-id="current.id"
       :read-snapshot="readCopilotSnapshot"
+      :apply-suggestion="applySuggestion"
     />
     <footer class="editor-footer"><InfoFilled />{{ t('OneDep ·') }}{{ current.code }}</footer>
   </article>

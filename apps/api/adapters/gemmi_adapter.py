@@ -88,8 +88,14 @@ def inspect(request):
         base = str(path)+'.base.cif'
         doc.write_file(base)
         answers, values, records = extract(doc.sole_block(),request['bindings'])
+        metadata = {}
+        for category in ('_entity_src_gen.', '_entity_src_nat.', '_exptl.', '_exptl_crystal_grow.', '_diffrn_source.', '_diffrn_detector.', '_diffrn_radiation.', '_em_imaging.', '_em_vitrification.', '_em_image_recording.', '_em_3d_reconstruction.'):
+            data = doc.sole_block().get_mmcif_category(category, raw=True)
+            for key, tokens in data.items():
+                values_for_tag = [decoded(t) for t in tokens]
+                if any(v is not None for v in values_for_tag): metadata[category+key] = values_for_tag
         return {'answers':answers,'values':values,'records':records,'baseName':Path(base).name,
-                'facts':{'atoms':sum(m.count_atom_sites() for m in s),'models':len(s),'entities':len(answers['molecules'])},'issues':[]}
+                'facts':{'atoms':sum(m.count_atom_sites() for m in s),'models':len(s),'entities':len(answers['molecules']),'metadata':metadata},'issues':[]}
     if parser == 'reflections':
         if path.suffix.lower()=='.mtz':
             mtz=gemmi.read_mtz_file(str(path)); count=mtz.nreflections

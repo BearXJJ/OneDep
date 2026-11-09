@@ -12,7 +12,7 @@ export function animateDock(
 
   const outer = root,
     shell = outer.querySelector<HTMLElement>('[data-dock-shell]')
-  if (!shell) throw new Error('Missing StepAlong shell')
+  if (!shell) throw new Error('Missing Copilot shell')
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const sizing = () => {
     const w = Math.min(372, innerWidth - 32)

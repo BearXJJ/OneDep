@@ -107,8 +107,8 @@ svg[data-squircle-outline] > path {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 0 15px;
+  gap: 8px;
+  padding: 0 10px;
   width: 100%;
   height: 100%;
   color: #244934;
@@ -162,17 +162,17 @@ svg[data-squircle-outline] > path {
   height: var(--full-height);
   display: flex;
   flex-direction: column;
-  padding: 21px 22px 16px;
+  padding: 14px 14px 10px;
   margin: 0;
   animation: sa-reveal 0.48s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 .sa-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   min-height: 34px;
   flex-shrink: 0;
-  padding-bottom: 13px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #edf0ed;
 }
 .sa-toolbar {
@@ -193,7 +193,7 @@ svg[data-squircle-outline] > path {
   color: #8a998f;
   display: grid;
   place-items: center;
-  padding: 4px;
+  padding: 3px;
 }
 .sa-icon:hover {
   background: #f0f5ef;
@@ -207,7 +207,7 @@ svg[data-squircle-outline] > path {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 17px 0 11px;
+  padding: 11px 0 7px;
   scrollbar-width: thin;
   overscroll-behavior: contain;
 }
@@ -216,14 +216,14 @@ svg[data-squircle-outline] > path {
   font-weight: 580;
   letter-spacing: -0.65px;
   line-height: 1.27;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   color: #274833;
 }
 .sa-answer p {
   font-size: 13px;
   line-height: 1.65;
   color: #6b7c6e;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
@@ -240,8 +240,8 @@ svg[data-squircle-outline] > path {
   font-weight: 600 !important;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 10px;
+  gap: 5px;
+  padding: 5px 6px;
 }
 .sa-locate:hover {
   background: #e1eee2;
@@ -254,7 +254,7 @@ svg[data-squircle-outline] > path {
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  padding-top: 3px;
 }
 .sa-regenerate:disabled {
   opacity: 0.4;
@@ -264,7 +264,7 @@ svg[data-squircle-outline] > path {
   height: 7px;
   background: #edf2ec;
   display: block;
-  margin: 13px 0;
+  margin: 8px 0;
   border-radius: 4px;
   animation: sa-pulse 1.4s ease-in-out infinite;
   width: 96%;
@@ -277,14 +277,14 @@ svg[data-squircle-outline] > path {
 }
 .sa-settings-actions {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   flex-shrink: 0;
   border-top: 1px solid #e8eee8;
-  padding-top: 13px;
-  margin-top: 7px;
+  padding-top: 8px;
+  margin-top: 5px;
 }
 .sa-button {
-  padding: 11px 16px !important;
+  padding: 7px 10px !important;
   flex: 1;
   min-height: 38px;
   font-size: 12px !important;
@@ -335,8 +335,8 @@ svg[data-squircle-outline] > path {
   }
   .sa-panel,
   .sa-settings {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 13px;
+    padding-right: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -385,4 +385,15 @@ svg[data-squircle-outline] > path {
     transform: translateY(0);
     filter: blur(0);
   }
+}
+
+.sa-suggestion {
+  border-top: 1px solid #dce5de;
+  padding: 8px 0;
+  overflow-wrap: anywhere;
+}
+.sa-suggestion details {
+  font-size: 12px;
+  margin: 5px 0;
+  color: #53665a;
 }

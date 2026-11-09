@@ -33,6 +33,14 @@ export class DepositionsController {
     private readonly depositions: DepositionsService,
     private readonly copilot: CopilotService,
   ) {}
+  @Get(':id/copilot/config')
+  async copilotConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    await this.depositions.get(id, request.authUser);
+    return this.copilot.settings();
+  }
   @Post(':id/copilot')
   async advise(
     @Param('id', ParseIntPipe) id: number,
@@ -45,7 +53,12 @@ export class DepositionsController {
     const disconnect = () => controller.abort();
     response.once('close', disconnect);
     try {
-      return await this.copilot.advise(body, controller.signal);
+      return await this.copilot.advise(
+        body,
+        controller.signal,
+        request.authUser.id,
+        id,
+      );
     } finally {
       response.off('close', disconnect);
     }
