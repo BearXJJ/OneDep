@@ -1,15 +1,17 @@
 <template>
   <section class="submitter-workspace">
     <template v-if="!selected && !selectingMethod">
-      <h1 class="section-heading">投递记录 / Depositions</h1>
+      <h1 class="section-heading">{{ t('投递记录 / Depositions') }}</h1>
       <div class="list-actions">
-        <ElButton type="primary" @click="beginCreate"><Plus class="nav-icon" />新建投递</ElButton>
+        <ElButton type="primary" @click="beginCreate"
+          ><Plus class="nav-icon" />{{ t('新建投递') }}</ElButton
+        >
       </div>
 
-      <div v-if="loading" class="state-panel">正在加载投递记录…</div>
+      <div v-if="loading" class="state-panel">{{ t('正在加载投递记录…') }}</div>
       <div v-else-if="error" class="state-panel error-state">
         <span>{{ error }}</span>
-        <ElButton text @click="loadList">重新加载</ElButton>
+        <ElButton text @click="loadList">{{ t('重新加载') }}</ElButton>
       </div>
       <div v-else-if="!items.length" class="empty-panel">
         <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -21,8 +23,8 @@
             stroke-linecap="round"
           />
         </svg>
-        <h2>还没有投递</h2>
-        <ElButton type="primary" @click="beginCreate">创建第一个投递</ElButton>
+        <h2>{{ t('还没有投递') }}</h2>
+        <ElButton type="primary" @click="beginCreate">{{ t('创建第一个投递') }}</ElButton>
       </div>
       <div v-else class="submission-list">
         <button
@@ -34,10 +36,10 @@
         >
           <span class="submission-main">
             <span class="submission-title">{{ item.title }}</span>
-            <small>{{ item.code }} · 更新于 {{ formatDate(item.updatedAt) }}</small>
+            <small>{{ item.code }}{{ t('· 更新于') }}{{ formatDate(item.updatedAt) }}</small>
           </span>
           <span class="status-badge" :class="{ submitted: item.status === 'SUBMITTED' }">
-            {{ item.status === 'SUBMITTED' ? '已提交' : '草稿' }}
+            {{ item.status === 'SUBMITTED' ? t('已提交') : t('草稿') }}
           </span>
           <span class="row-arrow" aria-hidden="true">›</span>
         </button>
@@ -62,7 +64,8 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from "@element-plus/icons-vue"
+import { t, localeTag } from '@/locales'
+import { Plus } from '@element-plus/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
 import type { DepositionCreationOptions, DepositionDetail, DepositionSummary } from '@onedep/shared'
@@ -138,7 +141,7 @@ function replaceSelected(value: DepositionDetail) {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(localeTag(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -147,4 +150,3 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 </script>
-

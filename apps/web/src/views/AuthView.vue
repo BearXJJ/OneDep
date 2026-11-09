@@ -1,40 +1,41 @@
 <template>
   <main class="auth-view">
-    <section class="brand-panel" aria-label="OneDep">
-      <span class="brand">OneDep<span class="brand-dot">.</span></span>
+    <section class="brand-panel" :aria-label="t('OneDep')">
+      <span class="brand">{{ t('OneDep') }}<span class="brand-dot">.</span></span>
     </section>
 
     <section class="form-panel" aria-labelledby="auth-title">
       <div class="form-inner">
-        <h1 id="auth-title">{{ isRegister ? '创建账号' : '登录' }}</h1>
+        <LanguageSwitch />
+        <h1 id="auth-title">{{ isRegister ? t('创建账号') : t('登录') }}</h1>
 
         <form @submit.prevent="submit">
           <label v-if="isRegister" class="field">
-            <span>姓名</span>
+            <span>{{ t('姓名') }}</span>
             <input
               v-model.trim="name"
               autocomplete="name"
               minlength="2"
               maxlength="80"
               required
-              placeholder="你的姓名"
+              :placeholder="t('你的姓名')"
             />
           </label>
 
           <label class="field">
-            <span>{{ isRegister ? '邮箱' : '邮箱或账号' }}</span>
+            <span>{{ isRegister ? t('邮箱') : t('邮箱或账号') }}</span>
             <input
               v-model.trim="email"
               :type="isRegister ? 'email' : 'text'"
               :autocomplete="isRegister ? 'email' : 'username'"
               maxlength="254"
               required
-              :placeholder="isRegister ? 'name@example.com' : '输入邮箱或账号'"
+              :placeholder="isRegister ? 'name@example.com' : t('输入邮箱或账号')"
             />
           </label>
 
           <label class="field">
-            <span>密码</span>
+            <span>{{ t('密码') }}</span>
             <input
               v-model="password"
               type="password"
@@ -42,32 +43,32 @@
               :minlength="isRegister ? 8 : undefined"
               :maxlength="128"
               required
-              :placeholder="isRegister ? '至少 8 个字符' : '输入密码'"
+              :placeholder="isRegister ? t('至少 8 个字符') : t('输入密码')"
             />
           </label>
 
           <fieldset v-if="isRegister" class="role-field">
-            <legend>注册身份</legend>
+            <legend>{{ t('注册身份') }}</legend>
             <label :class="{ selected: role === 'SUBMITTER' }">
               <input v-model="role" type="radio" value="SUBMITTER" />
-              <span>提交员</span>
+              <span>{{ t('提交员') }}</span>
             </label>
             <label :class="{ selected: role === 'REVIEWER' }">
               <input v-model="role" type="radio" value="REVIEWER" />
-              <span>审校员</span>
+              <span>{{ t('审校员') }}</span>
             </label>
           </fieldset>
 
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <ElButton class="submit" type="primary" native-type="submit" :loading="submitting">
-            {{ submitting ? '请稍候…' : isRegister ? '注册并进入' : '登录' }}
+            {{ submitting ? t('请稍候…') : isRegister ? t('注册并进入') : t('登录') }}
           </ElButton>
         </form>
 
         <p class="switch">
-          {{ isRegister ? '已有账号？' : '还没有账号？' }}
+          {{ isRegister ? t('已有账号？') : t('还没有账号？') }}
           <RouterLink :to="isRegister ? '/login' : '/register'">
-            {{ isRegister ? '去登录' : '创建账号' }}
+            {{ isRegister ? t('去登录') : t('创建账号') }}
           </RouterLink>
         </p>
       </div>
@@ -76,6 +77,8 @@
 </template>
 
 <script setup lang="ts">
+import LanguageSwitch from '@/components/LanguageSwitch.vue'
+import { t } from '@/locales'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElButton } from 'element-plus/es/components/button/index'
@@ -135,7 +138,7 @@ async function submit() {
   .brand-panel {
     display: grid;
     place-items: center;
-    padding: 48px;
+    padding: 31px;
     color: #f4f7f5;
     background: #17231d;
 
@@ -154,14 +157,14 @@ async function submit() {
   .form-panel {
     display: grid;
     place-items: center;
-    padding: 64px clamp(32px, 8vw, 128px);
+    padding: 42px clamp(21px, 5vw, 83px);
     background: #fff;
 
     .form-inner {
       width: min(100%, 400px);
 
       h1 {
-        margin: 0 0 34px;
+        margin: 0 0 22px;
         color: #17231d;
         font-size: 28px;
         font-weight: 650;
@@ -171,8 +174,8 @@ async function submit() {
       form {
         .field {
           display: grid;
-          gap: 8px;
-          margin-bottom: 20px;
+          gap: 5px;
+          margin-bottom: 13px;
           color: #3d4841;
           font-size: 13px;
           font-weight: 560;
@@ -180,7 +183,7 @@ async function submit() {
           input {
             width: 100%;
             height: 44px;
-            padding: 0 13px;
+            padding: 0 8px;
             border: 1px solid #d9dfda;
             border-radius: 8px;
             outline: none;
@@ -205,13 +208,13 @@ async function submit() {
         .role-field {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin: 0 0 26px;
+          gap: 6px;
+          margin: 0 0 17px;
           padding: 0;
           border: 0;
 
           legend {
-            margin-bottom: 9px;
+            margin-bottom: 6px;
             color: #3d4841;
             font-size: 13px;
             font-weight: 560;
@@ -221,8 +224,8 @@ async function submit() {
             display: flex;
             min-height: 44px;
             align-items: center;
-            gap: 9px;
-            padding: 0 13px;
+            gap: 6px;
+            padding: 0 8px;
             border: 1px solid #d9dfda;
             border-radius: 8px;
             color: #536057;
@@ -243,7 +246,7 @@ async function submit() {
         }
 
         .error {
-          margin: 0 0 18px;
+          margin: 0 0 12px;
           color: #aa433c;
           font-size: 14px;
         }
@@ -258,13 +261,13 @@ async function submit() {
       }
 
       .switch {
-        margin: 24px 0 0;
+        margin: 16px 0 0;
         color: #778178;
         font-size: 13px;
         text-align: center;
 
         a {
-          margin-left: 4px;
+          margin-left: 3px;
           color: #26362b;
           font-weight: 600;
           text-underline-offset: 4px;

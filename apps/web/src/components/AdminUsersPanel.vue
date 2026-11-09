@@ -2,27 +2,29 @@
   <section class="admin-users" aria-labelledby="users-title">
     <header class="page-heading">
       <div class="title-group">
-        <h1 id="users-title">用户管理</h1>
+        <h1 id="users-title">{{ t('用户管理') }}</h1>
         <span v-if="!loading && !loadError" class="user-count">{{ users.length }}</span>
       </div>
-      <ElButton class="create-button" type="primary" @click="openCreate">新增账户</ElButton>
+      <ElButton class="create-button" type="primary" @click="openCreate">{{
+        t('新增账户')
+      }}</ElButton>
     </header>
 
     <div class="list-panel">
-      <div v-if="loading" class="list-state">正在加载用户…</div>
+      <div v-if="loading" class="list-state">{{ t('正在加载用户…') }}</div>
       <div v-else-if="loadError" class="list-state error-state">
         <span>{{ loadError }}</span>
-        <ElButton plain @click="loadUsers">重新加载</ElButton>
+        <ElButton plain @click="loadUsers">{{ t('重新加载') }}</ElButton>
       </div>
-      <div v-else-if="users.length === 0" class="list-state">暂无用户</div>
+      <div v-else-if="users.length === 0" class="list-state">{{ t('暂无用户') }}</div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th scope="col">用户</th>
-              <th scope="col">角色</th>
-              <th scope="col">注册时间</th>
-              <th scope="col" class="action-column">操作</th>
+              <th scope="col">{{ t('用户') }}</th>
+              <th scope="col">{{ t('角色') }}</th>
+              <th scope="col">{{ t('注册时间') }}</th>
+              <th scope="col" class="action-column">{{ t('操作') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -35,7 +37,7 @@
               </td>
               <td>
                 <span class="role-badge" :class="`is-${user.role.toLowerCase()}`">
-                  {{ ROLE_LABELS[user.role] }}
+                  {{ t(ROLE_LABELS[user.role]) }}
                 </span>
               </td>
               <td class="date-cell">{{ formatDate(user.createdAt) }}</td>
@@ -47,9 +49,8 @@
                   :disabled="submitting"
                   data-testid="edit-user"
                   @click="openEdit(user)"
+                  >{{ t('编辑') }}</ElButton
                 >
-                  编辑
-                </ElButton>
                 <span v-else class="locked-mark">—</span>
               </td>
             </tr>
@@ -62,7 +63,7 @@
       v-model="drawerOpen"
       class="user-editor-drawer"
       :size="drawerSize"
-      :title="drawerMode === 'create' ? '新增账户' : '编辑账户'"
+      :title="drawerMode === 'create' ? t('新增账户') : t('编辑账户')"
       :close-on-click-modal="!submitting"
       :close-on-press-escape="!submitting"
       :before-close="beforeCloseDrawer"
@@ -70,35 +71,35 @@
     >
       <form class="user-editor" @submit.prevent="saveUser">
         <div class="form-field">
-          <label for="user-name">姓名</label>
+          <label for="user-name">{{ t('姓名') }}</label>
           <input
             id="user-name"
             v-model.trim="formName"
             minlength="2"
             maxlength="80"
             autocomplete="name"
-            placeholder="输入姓名"
+            :placeholder="t('输入姓名')"
             :disabled="drawerMode === 'edit'"
             required
           />
         </div>
 
         <div class="form-field">
-          <label for="user-email">邮箱</label>
+          <label for="user-email">{{ t('邮箱') }}</label>
           <input
             id="user-email"
             v-model.trim="formEmail"
             type="email"
             maxlength="254"
             autocomplete="email"
-            placeholder="name@example.com"
+            :placeholder="t('name@example.com')"
             :disabled="drawerMode === 'edit'"
             required
           />
         </div>
 
         <div v-if="drawerMode === 'create'" class="form-field">
-          <label for="new-user-password">初始密码</label>
+          <label for="new-user-password">{{ t('初始密码') }}</label>
           <input
             id="new-user-password"
             v-model="formPassword"
@@ -106,16 +107,16 @@
             minlength="8"
             maxlength="128"
             autocomplete="new-password"
-            placeholder="至少 8 个字符"
+            :placeholder="t('至少 8 个字符')"
             required
           />
         </div>
 
         <div class="form-field">
-          <label id="role-label">角色</label>
+          <label id="role-label">{{ t('角色') }}</label>
           <ElSelect v-model="formRole" aria-labelledby="role-label" class="role-select">
-            <ElOption label="提交员" value="SUBMITTER" />
-            <ElOption label="审校员" value="REVIEWER" />
+            <ElOption :label="t('提交员')" value="SUBMITTER" />
+            <ElOption :label="t('审校员')" value="REVIEWER" />
           </ElSelect>
         </div>
 
@@ -130,18 +131,17 @@
             :disabled="submitting"
             data-testid="delete-user"
             @click="deleteDialogOpen = true"
+            >{{ t('删除账户') }}</ElButton
           >
-            删除账户
-          </ElButton>
           <span class="action-spacer" />
-          <ElButton :disabled="submitting" @click="closeDrawer">取消</ElButton>
+          <ElButton :disabled="submitting" @click="closeDrawer">{{ t('取消') }}</ElButton>
           <ElButton
             type="primary"
             native-type="submit"
             :loading="submitting"
             :disabled="drawerMode === 'edit' && formRole === selectedUser?.role"
           >
-            {{ drawerMode === 'create' ? '创建账户' : '保存修改' }}
+            {{ drawerMode === 'create' ? t('创建账户') : t('保存修改') }}
           </ElButton>
         </div>
       </form>
@@ -150,7 +150,7 @@
     <ElDialog
       v-model="deleteDialogOpen"
       class="delete-user-dialog"
-      title="删除账户"
+      :title="t('删除账户')"
       width="400px"
       align-center
       :close-on-click-modal="!submitting"
@@ -158,25 +158,27 @@
       :show-close="!submitting"
     >
       <p class="delete-message">
-        确定删除 <strong>{{ selectedUser?.email }}</strong
-        >？删除后该账户将无法登录，此操作无法撤销。
+        {{ t('确定删除') }}<strong>{{ selectedUser?.email }}</strong
+        >{{ t('？删除后该账户将无法登录，此操作无法撤销。') }}
       </p>
       <template #footer>
-        <ElButton :disabled="submitting" @click="deleteDialogOpen = false">取消</ElButton>
+        <ElButton :disabled="submitting" @click="deleteDialogOpen = false">{{
+          t('取消')
+        }}</ElButton>
         <ElButton
           type="danger"
           :loading="submitting"
           data-testid="confirm-delete"
           @click="removeUser"
+          >{{ t('确认删除') }}</ElButton
         >
-          确认删除
-        </ElButton>
       </template>
     </ElDialog>
   </section>
 </template>
 
 <script setup lang="ts">
+import { t, localeTag } from '@/locales'
 import { httpError } from '@/data/http-error'
 import { computed, onMounted, ref } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
@@ -320,11 +322,10 @@ async function removeUser() {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(localeTag(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(new Date(value))
 }
 </script>
-

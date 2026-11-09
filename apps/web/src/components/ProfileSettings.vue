@@ -3,12 +3,12 @@
     <div class="settings-grid">
       <form class="settings-panel profile-form" @submit.prevent="saveProfile">
         <div class="panel-heading">
-          <h2>个人信息</h2>
+          <h2>{{ t('个人信息') }}</h2>
         </div>
 
         <div class="field-grid">
           <label class="field" for="profile-name">
-            <span>姓名</span>
+            <span>{{ t('姓名') }}</span>
             <input
               id="profile-name"
               v-model.trim="name"
@@ -19,7 +19,7 @@
           </label>
 
           <label class="field" for="profile-email">
-            <span>登录邮箱</span>
+            <span>{{ t('登录邮箱') }}</span>
             <input
               id="profile-email"
               v-model.trim="email"
@@ -30,19 +30,19 @@
           </label>
 
           <label class="field" for="profile-orcid">
-            <span>ORCID</span>
+            <span>{{ t('ORCID') }}</span>
             <input
               id="profile-orcid"
               v-model.trim="orcid"
               type="text"
               autocomplete="off"
               maxlength="19"
-              placeholder="0000-0000-0000-0000"
+              :placeholder="t('0000-0000-0000-0000')"
             />
           </label>
 
           <label class="field" for="profile-institution">
-            <span>机构</span>
+            <span>{{ t('机构') }}</span>
             <input
               id="profile-institution"
               v-model.trim="institution"
@@ -53,7 +53,7 @@
           </label>
 
           <label class="field" for="profile-country">
-            <span>国家或地区</span>
+            <span>{{ t('国家或地区') }}</span>
             <input
               id="profile-country"
               v-model.trim="country"
@@ -64,7 +64,7 @@
           </label>
 
           <label class="field" for="profile-role">
-            <span>账号角色</span>
+            <span>{{ t('账号角色') }}</span>
             <input id="profile-role" :value="roleLabel" type="text" disabled />
           </label>
         </div>
@@ -75,7 +75,7 @@
           :class="{ error: profileNoticeType === 'error' }"
           role="status"
         >
-          {{ profileNotice }}
+          {{ t(profileNotice) }}
         </p>
 
         <div class="actions">
@@ -84,20 +84,19 @@
             native-type="submit"
             :loading="savingProfile"
             :disabled="!changed"
+            >{{ t('保存个人信息') }}</ElButton
           >
-            保存个人信息
-          </ElButton>
         </div>
       </form>
 
       <form class="settings-panel password-form" @submit.prevent="savePassword">
         <div class="panel-heading">
-          <h2>修改密码</h2>
+          <h2>{{ t('修改密码') }}</h2>
         </div>
 
         <div class="field-grid password-grid">
           <label class="field" for="current-password">
-            <span>当前密码</span>
+            <span>{{ t('当前密码') }}</span>
             <input
               id="current-password"
               v-model="currentPassword"
@@ -108,7 +107,7 @@
           </label>
 
           <label class="field" for="new-password">
-            <span>新密码</span>
+            <span>{{ t('新密码') }}</span>
             <input
               id="new-password"
               v-model="newPassword"
@@ -120,7 +119,7 @@
           </label>
 
           <label class="field" for="confirm-password">
-            <span>确认新密码</span>
+            <span>{{ t('确认新密码') }}</span>
             <input
               id="confirm-password"
               v-model="confirmPassword"
@@ -138,7 +137,7 @@
           :class="{ error: passwordNoticeType === 'error' }"
           role="status"
         >
-          {{ passwordNotice }}
+          {{ t(passwordNotice) }}
         </p>
 
         <div class="actions">
@@ -147,9 +146,8 @@
             native-type="submit"
             :loading="savingPassword"
             :disabled="!passwordReady"
+            >{{ t('修改密码') }}</ElButton
           >
-            修改密码
-          </ElButton>
         </div>
       </form>
     </div>
@@ -157,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/locales'
 import { computed, ref, watch } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
 import type { UserRole } from '@onedep/shared'
@@ -289,4 +288,3 @@ function showPasswordNotice(message: string, type: 'success' | 'error' = 'succes
   passwordNoticeType.value = type
 }
 </script>
-

@@ -1,11 +1,11 @@
 <template>
   <section class="method-selector">
     <header class="selector-heading">
-      <h1>选择实验方法</h1>
-      <span>可多选</span>
+      <h1>{{ t('选择实验方法') }}</h1>
+      <span>{{ t('可多选') }}</span>
     </header>
 
-    <div class="method-grid" aria-label="实验方法">
+    <div class="method-grid" :aria-label="t('实验方法')">
       <button
         v-for="method in DEPOSITION_METHODS"
         :key="method.value"
@@ -18,14 +18,14 @@
         <span class="method-check" aria-hidden="true">
           {{ selectedMethods.includes(method.value) ? '✓' : '' }}
         </span>
-        <strong>{{ method.label }}</strong>
+        <strong>{{ t(method.label) }}</strong>
         <span class="method-code">{{ method.code }}</span>
       </button>
     </div>
 
     <div v-if="selectedMethods.length" class="configuration">
       <section v-if="hasEm" class="question-block">
-        <h2>电子显微镜类型</h2>
+        <h2>{{ t('电子显微镜类型') }}</h2>
         <div class="choice-grid">
           <button
             v-for="option in emSubtypeOptions"
@@ -35,13 +35,13 @@
             :class="{ selected: emSubtype === option.value }"
             @click="selectEmSubtype(option.value)"
           >
-            {{ option.label }}
+            {{ t(option.label) }}
           </button>
         </div>
       </section>
 
       <section v-if="showCoordinateQuestion" class="question-block">
-        <h2>本次投递是否包含坐标？</h2>
+        <h2>{{ t('本次投递是否包含坐标？') }}</h2>
         <div class="choice-grid two-columns">
           <button
             type="button"
@@ -49,7 +49,7 @@
             :class="{ selected: coordinates === true }"
             @click="selectCoordinates(true)"
           >
-            是
+            {{ t('是') }}
           </button>
           <button
             type="button"
@@ -57,13 +57,13 @@
             :class="{ selected: coordinates === false }"
             @click="selectCoordinates(false)"
           >
-            否，仅提交实验数据
+            {{ t('否，仅提交实验数据') }}
           </button>
         </div>
       </section>
 
       <section v-if="showMapQuestion" class="question-block">
-        <h2>与本次投递关联的 EMDB 地图</h2>
+        <h2>{{ t('与本次投递关联的 EMDB 地图') }}</h2>
         <div class="choice-grid" :class="{ 'three-columns': hasEc }">
           <button
             type="button"
@@ -71,7 +71,7 @@
             :class="{ selected: emMapStatus === 'NEW_MAP' }"
             @click="selectMapStatus('NEW_MAP')"
           >
-            提交新地图
+            {{ t('提交新地图') }}
           </button>
           <button
             v-if="hasEc"
@@ -80,7 +80,7 @@
             :class="{ selected: emMapStatus === 'STRUCTURE_FACTORS_ONLY' }"
             @click="selectMapStatus('STRUCTURE_FACTORS_ONLY')"
           >
-            仅提交结构因子
+            {{ t('仅提交结构因子') }}
           </button>
           <button
             type="button"
@@ -88,20 +88,20 @@
             :class="{ selected: emMapStatus === 'PREVIOUS' }"
             @click="selectMapStatus('PREVIOUS')"
           >
-            地图已投递
+            {{ t('地图已投递') }}
           </button>
         </div>
       </section>
 
       <section v-if="effectiveMapStatus === 'PREVIOUS'" class="question-block compact">
         <label class="text-field">
-          <span>关联 EMDB 编号</span>
-          <input v-model.trim="relatedEmdb" type="text" placeholder="EMD-1234" />
+          <span>{{ t('关联 EMDB 编号') }}</span>
+          <input v-model.trim="relatedEmdb" type="text" :placeholder="t('EMD-1234')" />
         </label>
       </section>
 
       <section v-if="needsCompositeQuestion" class="question-block">
-        <h2>是否为复合地图投递？</h2>
+        <h2>{{ t('是否为复合地图投递？') }}</h2>
         <div class="choice-grid two-columns">
           <button
             type="button"
@@ -109,7 +109,7 @@
             :class="{ selected: compositeMap === true }"
             @click="selectCompositeMap(true)"
           >
-            是
+            {{ t('是') }}
           </button>
           <button
             type="button"
@@ -117,13 +117,13 @@
             :class="{ selected: compositeMap === false }"
             @click="selectCompositeMap(false)"
           >
-            否
+            {{ t('否') }}
           </button>
         </div>
       </section>
 
       <section v-if="showNmrDataQuestion" class="question-block">
-        <h2>NMR 实验数据是否已投递至 BMRB？</h2>
+        <h2>{{ t('NMR 实验数据是否已投递至 BMRB？') }}</h2>
         <div class="choice-grid two-columns">
           <button
             type="button"
@@ -131,7 +131,7 @@
             :class="{ selected: nmrDataPreviouslyDeposited === true }"
             @click="selectPreviousNmrData(true)"
           >
-            是
+            {{ t('是') }}
           </button>
           <button
             type="button"
@@ -139,7 +139,7 @@
             :class="{ selected: nmrDataPreviouslyDeposited === false }"
             @click="selectPreviousNmrData(false)"
           >
-            否
+            {{ t('否') }}
           </button>
         </div>
       </section>
@@ -149,18 +149,23 @@
         class="question-block compact"
       >
         <label class="text-field">
-          <span>关联 BMRB 编号</span>
-          <input v-model.trim="relatedBmrb" type="text" inputmode="numeric" placeholder="12345" />
+          <span>{{ t('关联 BMRB 编号') }}</span>
+          <input
+            v-model.trim="relatedBmrb"
+            type="text"
+            inputmode="numeric"
+            :placeholder="t('12345')"
+          />
         </label>
       </section>
 
       <section v-if="accessionCodes.length" class="accession-summary">
-        <span>将申请编号</span>
+        <span>{{ t('将申请编号') }}</span>
         <strong v-for="code in accessionCodes" :key="code">{{ code }}</strong>
       </section>
     </div>
 
-    <p v-if="error" class="selector-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="selector-error" role="alert">{{ t(error) }}</p>
 
     <div class="selector-actions">
       <ElButton
@@ -168,14 +173,14 @@
         :loading="submitting"
         :disabled="!selectedMethods.length"
         @click="confirmSelection"
+        >{{ t('创建投递') }}</ElButton
       >
-        创建投递
-      </ElButton>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/locales'
 import { computed, ref } from 'vue'
 import { ElButton } from 'element-plus/es/components/button/index'
 import type {
@@ -397,4 +402,3 @@ function calculateAccessionCodes(): AccessionCode[] {
   return codes
 }
 </script>
-

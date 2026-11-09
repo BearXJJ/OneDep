@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { t, locale } from '@/locales'
+import { localizeSurvey } from '@/locales/survey'
+import LanguageSwitch from './LanguageSwitch.vue'
 import StepAlong from '@/copilot/StepAlong.vue'
 import type { Snapshot } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
@@ -69,6 +72,7 @@ function hasDemo(element: Element): boolean {
 function configure() {
   renderedQuestions.clear()
   const survey = model.value
+  localizeSurvey(survey, current.value.profile)
   survey.questionTitleLocation = 'left'
   survey.applyTheme({
     isPanelless: true,
@@ -116,6 +120,10 @@ function configure() {
   molecules.templateTitle = '{panel.name}'
 }
 configure()
+watch(locale, () => {
+  model.value.locale = locale.value === 'zh' ? 'zh-cn' : 'en'
+  version.value++
+})
 function accept(value: DepositionDetail) {
   current.value = value
   model.value.dispose()
@@ -337,8 +345,8 @@ const navPages = computed(() => {
   return result
 })
 const pageTitle = computed(() => {
-  if (tab.value === 'requirements') return 'List requirements'
-  if (tab.value === 'origins') return 'Field sources'
+  if (tab.value === 'requirements') return t('List requirements')
+  if (tab.value === 'origins') return t('Field sources')
   const n = navPages.value.find((n) => n.page === tab.value)
   if (!n) throw new Error('Unknown navigation page: ' + tab.value)
   return n.title
@@ -409,7 +417,7 @@ const states: Record<string, string> = {
 function stateLabel(state: string) {
   const label = states[state]
   if (label === undefined) throw new Error('Unknown processing state: ' + state)
-  return label
+  return t(label)
 }
 function readCopilotSnapshot(focusId: string | null): Snapshot {
   const root = content.value
@@ -481,46 +489,47 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
 <template>
   <article class="editor onedep-workspace">
     <header class="editor-masthead">
-      <img :src="'/onedep/images/onedep_logo.png'" alt="OneDep" height="45" />
+      <LanguageSwitch />
+      <img :src="'/onedep/images/onedep_logo.png'" :alt="t('OneDep')" height="45" />
       <div class="deposition-title">
-        OneDep Deposition: {{ current.code
+        {{ t('OneDep Deposition:') }}{{ current.code
         }}<small
-          >{{ current.method }} · {{ editable ? 'Draft' : 'Submitted' }} · v{{
-            current.revision
-          }}</small
+          >{{ current.method }} · {{ editable ? t('Draft') : t('Submitted') }}{{ t('· v')
+          }}{{ current.revision }}</small
         >
       </div>
-      <button @click="leave"><Back />Deposition list</button
-      ><img :src="'/onedep/images/wwpdb_logo.png'" alt="wwPDB" height="34" />
+      <button @click="leave"><Back />{{ t('Deposition list') }}</button
+      ><img :src="'/onedep/images/wwpdb_logo.png'" :alt="t('wwPDB')" height="34" />
     </header>
     <div class="editor-toolbar">
-      <span class="scope-key"><i />黄色：原 demo 之外的内容</span
-      ><span v-if="busy">Processing…</span
-      ><span v-if="notice" role="status" class="notice">{{ notice }}</span>
-      <button :disabled="busy || !editable" @click="save">Save{{ dirty ? ' *' : '' }}</button
-      ><button :disabled="busy || !editable" @click="check">Run validation</button>
+      <span class="scope-key"><i />{{ t('黄色：原 demo 之外的内容') }}</span
+      ><span v-if="busy">{{ t('Processing…') }}</span
+      ><span v-if="notice" role="status" class="notice">{{ t(notice) }}</span>
+      <button :disabled="busy || !editable" @click="save">
+        {{ t('Save') }}{{ dirty ? ' *' : '' }}</button
+      ><button :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</button>
       <a v-if="current.submission" :href="`/api/depositions/${current.id}/export`"
-        ><Download />Download submission</a
+        ><Download />{{ t('Download submission') }}</a
       >
     </div>
     <div class="editor-layout">
-      <aside class="editor-sidebar" aria-label="投递步骤">
+      <aside class="editor-sidebar" :aria-label="t('投递步骤')">
         <button class="requirements-button" @click="select('requirements')">
-          List requirements
+          {{ t('List requirements') }}
         </button>
         <div class="completion-bars">
           <label
-            >All items <small>{{ statistics.complete }} / {{ statistics.total }}</small
+            >{{ t('All items') }}<small>{{ statistics.complete }} / {{ statistics.total }}</small
             ><progress :value="statistics.allPercent" max="100" /></label
           ><label
-            >Mandatory items
-            <small>{{ statistics.requiredComplete }} / {{ statistics.required }}</small
+            >{{ t('Mandatory items')
+            }}<small>{{ statistics.requiredComplete }} / {{ statistics.required }}</small
             ><progress :value="statistics.mandatoryPercent" max="100"
           /></label>
         </div>
-        <h2 class="section-heading">Navigation</h2>
+        <h2 class="section-heading">{{ t('Navigation') }}</h2>
         <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
-        <button class="logout-button" :disabled="busy" @click="logout">Log out</button>
+        <button class="logout-button" :disabled="busy" @click="logout">{{ t('Log out') }}</button>
       </aside>
       <main
         id="deposition-content"
@@ -532,37 +541,44 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
       >
         <h1 class="section-heading">{{ pageTitle }}</h1>
         <section v-if="tab === 'welcome'" class="instructions">
-          <h2>Welcome to OneDep</h2>
+          <h2>{{ t('Welcome to OneDep') }}</h2>
           <p>
-            Upload coordinates and experimental files, review extracted information, then complete
-            each section in the navigation tree.
+            {{
+              t(
+                'Upload coordinates and experimental files, review extracted information, then complete each section in the navigation tree.',
+              )
+            }}
           </p>
           <ol>
             <li>
-              <button class="text-link" @click="select('uploads')">Upload / replace files</button>
+              <button class="text-link" @click="select('uploads')">
+                {{ t('Upload / replace files') }}
+              </button>
             </li>
             <li>
               <button class="text-link" @click="select('summary')">
-                Review the upload summary
+                {{ t('Review the upload summary') }}
               </button>
             </li>
             <li>
               <button class="text-link" @click="select('contact')">
-                Complete administrative and experimental information
+                {{ t('Complete administrative and experimental information') }}
               </button>
             </li>
             <li>
-              <button class="text-link" @click="select('view')">Review validation results</button>
+              <button class="text-link" @click="select('view')">
+                {{ t('Review validation results') }}
+              </button>
             </li>
             <li>
               <button class="text-link" @click="select('depsummary')">
-                Review terms and submit
+                {{ t('Review terms and submit') }}
               </button>
             </li>
           </ol>
         </section>
         <section v-else-if="tab === 'requirements'">
-          <p>{{ statistics.missing.length }} mandatory items to complete</p>
+          <p>{{ statistics.missing.length }}{{ t('mandatory items to complete') }}</p>
           <ul class="requirements-list">
             <li v-for="(item, i) in statistics.missing" :key="i">
               <button class="text-link" @click="jump(item)">{{ item.title }} <ArrowRight /></button>
@@ -571,31 +587,35 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
         </section>
         <section v-else-if="tab === 'uploads'" class="files">
           <article v-for="rule in definition.files" :key="rule.role" class="file-group">
-            <h2>{{ rule.title }}</h2>
-            <div v-for="slot in rule.max" :key="slot" class="file-slot">
+            <h2>{{ t(rule.title) }}</h2>
+            <div
+              v-for="slot in rule.max"
+              :key="slot"
+              class="file-slot"
+            >
               <span v-if="rule.max > 1">{{ slot }}</span
               ><template v-if="fileOf(rule.role, slot)"
                 ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
                   fileOf(rule.role, slot)!.originalName
                 }}</a
                 ><span
-                  >v{{ fileOf(rule.role, slot)!.revision }} ·
+                  >{{ t('v') }}{{ fileOf(rule.role, slot)!.revision }} ·
                   {{ stateLabel(fileOf(rule.role, slot)!.parseState) }}</span
                 >
                 <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
                   {{ fileOf(rule.role, slot)!.parseError }}
                 </p>
                 <button :disabled="busy || !editable" @click="reparse(fileOf(rule.role, slot)!.id)">
-                  <Refresh />Reparse</button
+                  <Refresh />{{ t('Reparse') }}</button
                 ><button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
-                  <Delete />Remove
+                  <Delete />{{ t('Remove') }}
                 </button></template
-              ><span v-else>Awaiting upload</span>
-              <label v-if="editable"
-                >{{ fileOf(rule.role, slot) ? 'Replace' : 'Upload'
+              ><span v-else>{{ t('Awaiting upload') }}</span>
+              <label v-if="editable" class="file-picker"
+                >{{ fileOf(rule.role, slot) ? t('Replace') : t('Upload')
                 }}<input
                   type="file"
-                  :aria-label="`${rule.title} 槽 ${slot}`"
+                  :aria-label="`${t(rule.title)} ${t('Slot')} ${slot}`"
                   :accept="rule.extensions.join(',')"
                   :disabled="busy"
                   @change="upload(rule.role, slot, $event)"
@@ -604,26 +624,36 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
           </article>
         </section>
         <section v-else-if="tab === 'summary'">
-          <p>Review the information extracted from the uploaded files.</p>
+          <p>{{ t('Review the information extracted from the uploaded files.') }}</p>
           <details v-for="file in current.files" :key="file.id" open class="summary-block">
             <summary>{{ file.originalName }} · {{ stateLabel(file.parseState) }}</summary>
             <table>
               <tbody>
                 <tr>
-                  <th>Version / size</th>
-                  <td>{{ file.revision }} / {{ (file.size / 1024 / 1024).toFixed(2) }} MB</td>
+                  <th>{{ t('Version / size') }}</th>
+                  <td>
+                    {{ file.revision }} / {{ (file.size / 1024 / 1024).toFixed(2) }}{{ t('MB') }}
+                  </td>
                 </tr>
-                <tr v-for="(value, key) in file.facts as Record<string, unknown>" :key="key">
-                  <th>{{ key }}</th>
+                <tr
+                  v-for="(value, key) in Object.fromEntries(
+                    Object.entries(file.facts as Record<string, unknown>).filter(
+                      ([key]) => key !== 'metadata',
+                    ),
+                  )"
+                  :key="key"
+                >
+                  <th>{{ t(String(key)) }}</th>
                   <td>{{ value }}</td>
                 </tr>
               </tbody>
             </table>
             <p v-for="conflict in file.conflicts" :key="conflict" class="missing">{{ conflict }}</p>
           </details>
-          <button v-if="!current.files.length" @click="select('uploads')">Upload files</button
+          <button v-if="!current.files.length" @click="select('uploads')">
+            {{ t('Upload files') }}</button
           ><button class="text-link" @click="select('origins')">
-            Field sources <ArrowRight />
+            {{ t('Field sources') }}<ArrowRight />
           </button>
         </section>
         <section v-else-if="tab === 'message'" class="outside-demo communication">
@@ -647,16 +677,17 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
         </section>
         <section v-else-if="tab === 'view'">
           <div class="validation-actions">
-            <button :disabled="busy || !editable" @click="check">Run validation</button
-            ><span v-if="dirty">Unsaved changes</span>
+            <button :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</button
+            ><span v-if="dirty">{{ t('Unsaved changes') }}</span>
           </div>
-          <p v-if="!current.checks.length">No validation report</p>
+          <p v-if="!current.checks.length">{{ t('No validation report') }}</p>
           <details v-for="run in current.checks" :key="run.id" open class="summary-block">
             <summary>
-              {{ run.checkId }} · {{ stateLabel(run.state) }} · v{{ run.inputRevision }}
+              {{ t(run.checkId) }} · {{ stateLabel(run.state) }}{{ t('· v')
+              }}{{ run.inputRevision }}
             </summary>
             <p v-if="run.error" class="error">{{ run.error }}</p>
-            <p v-if="run.state === 'succeeded' && !run.issues.length">No issues found</p>
+            <p v-if="run.state === 'succeeded' && !run.issues.length">{{ t('No issues found') }}</p>
             <ul>
               <li
                 v-for="(issue, i) in run.issues"
@@ -672,9 +703,9 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
           <table>
             <thead>
               <tr>
-                <th>Field / record</th>
-                <th>Source</th>
-                <th>CIF tag</th>
+                <th>{{ t('Field / record') }}</th>
+                <th>{{ t('Source') }}</th>
+                <th>{{ t('CIF tag') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -689,8 +720,8 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
                 <td>
                   {{
                     origin.source === 'user'
-                      ? 'Edited'
-                      : `File ${origin.fileId} · v${origin.fileRevision}`
+                      ? t('Edited')
+                      : `${t('File')} ${origin.fileId} · v${origin.fileRevision}`
                   }}
                 </td>
                 <td>{{ origin.tag }}</td>
@@ -700,12 +731,12 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
         </section>
         <template v-else>
           <section v-if="tab === 'ligandsummary'" class="outside-demo">
-            <h2>Ligands identified in the coordinate file</h2>
+            <h2>{{ t('Ligands identified in the coordinate file') }}</h2>
             <table>
               <thead>
                 <tr>
-                  <th>Ligand</th>
-                  <th>Inspection</th>
+                  <th>{{ t('Ligand') }}</th>
+                  <th>{{ t('Inspection') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -713,65 +744,73 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
                   <td>{{ ligand.name }}</td>
                   <td>
                     <button :disabled="!editable" @click="inspectLigand(ligand)">
-                      Inspect selected ligand
+                      {{ t('Inspect selected ligand') }}
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <p v-if="!ligands.length">No non-polymer entities in the parsed coordinate metadata</p>
+            <p v-if="!ligands.length">
+              {{ t('No non-polymer entities in the parsed coordinate metadata') }}
+            </p>
           </section>
           <section v-if="tab === 'depsummary'" class="submission-summary">
-            <h2>Deposition summary</h2>
+            <h2>{{ t('Deposition summary') }}</h2>
             <table>
               <tbody>
                 <tr>
-                  <th>Entry</th>
+                  <th>{{ t('Entry') }}</th>
                   <td>{{ current.code }}</td>
                 </tr>
                 <tr>
-                  <th>Title</th>
+                  <th>{{ t('Title') }}</th>
                   <td>{{ model.getValue('title') }}</td>
                 </tr>
                 <tr>
-                  <th>Files</th>
+                  <th>{{ t('Files') }}</th>
                   <td>{{ current.files.length }}</td>
                 </tr>
                 <tr>
-                  <th>Scientific information to complete</th>
+                  <th>{{ t('Scientific information to complete') }}</th>
                   <td>
                     <button class="text-link" @click="select('requirements')">
-                      {{ statistics.missing.length }} items
+                      {{ statistics.missing.length }}{{ t('items') }}
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
             <details>
-              <summary>Deposition and release policies</summary>
+              <summary>{{ t('Deposition and release policies') }}</summary>
               <p>
-                Review authors, contact information, release instructions and validation results
-                before submission.
+                {{
+                  t(
+                    'Review authors, contact information, release instructions and validation results before submission.',
+                  )
+                }}
               </p>
-              <a href="https://www.wwpdb.org/deposition/policies" target="_blank" rel="noreferrer"
-                >wwPDB deposition policies</a
+              <a
+                href="https://www.wwpdb.org/deposition/policies"
+                target="_blank"
+                rel="noreferrer"
+                >{{ t('wwPDB deposition policies') }}</a
               >
             </details>
           </section>
           <SurveyComponent :model="model" />
           <section v-if="tab === 'depsummary'" class="submission-actions">
             <button :disabled="busy || !editable || !checksReady" @click="submit">
-              Submit deposition</button
+              {{ t('Submit deposition') }}</button
             ><button v-if="editable && !checksReady" :disabled="busy" @click="check">
-              Run validation</button
-            ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`"
-              >Download submission</a
-            >
+              {{ t('Run validation') }}</button
+            ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`">{{
+              t('Download submission')
+            }}</a>
           </section>
         </template>
         <div class="page-actions">
-          <button :disabled="busy || !editable" @click="save">Save</button
-          ><button @click="nextPage">Continue to next section <ArrowRight /></button>
+          <button :disabled="busy || !editable" @click="save">{{ t('Save') }}</button
+          ><button @click="nextPage">{{ t('Continue to next section') }}<ArrowRight /></button>
         </div>
       </main>
     </div>
@@ -782,6 +821,6 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
       :deposition-id="current.id"
       :read-snapshot="readCopilotSnapshot"
     />
-    <footer class="editor-footer"><InfoFilled />OneDep · {{ current.code }}</footer>
+    <footer class="editor-footer"><InfoFilled />{{ t('OneDep ·') }}{{ current.code }}</footer>
   </article>
 </template>
