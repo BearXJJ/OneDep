@@ -16,6 +16,7 @@ model User {
   country      String?
   passwordHash String
   role         Role         @default(SUBMITTER)
+  messages     DepositionMessage[]
   depositions  Deposition[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -34,6 +35,7 @@ model Deposition {
   answers     Json @default("{}")
   origins     Json @default("[]")
   checks      Json @default("[]")
+  messages    DepositionMessage[]
   snapshots   Submission[]
   submitterId Int
   submitter   User               @relation(fields: [submitterId], references: [id], onDelete: Cascade)
@@ -104,4 +106,16 @@ enum DepositionFileKind {
   EM_MAP
   EM_HALF_MAP
   EM_IMAGE
+}
+
+model DepositionMessage {
+  id Int @id @default(autoincrement())
+  depositionId Int
+  deposition Deposition @relation(fields:[depositionId], references:[id], onDelete:Cascade)
+  authorId Int
+  author User @relation(fields:[authorId], references:[id])
+  subject String
+  body String
+  createdAt DateTime @default(now())
+  @@index([depositionId, createdAt])
 }

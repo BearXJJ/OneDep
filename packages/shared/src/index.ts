@@ -43,7 +43,6 @@ export interface DepositionCreationOptions {
   accessionCodes: AccessionCode[];
 }
 
-
 export interface DepositionFile {
   id: number;
   kind: DepositionFileKind;
@@ -89,4 +88,20 @@ export interface DepositionDetail extends DepositionSummary {
   checks: CheckRun[];
   submission: { id: string; checksum: string } | null;
   files: DepositionFile[];
+}
+
+export interface CommunicationMessage {
+  id: number;
+  subject: string;
+  body: string;
+  createdAt: string;
+  author: { id: number; email: string; name: string | null; role: UserRole };
+}
+export interface ReviewEntry {
+  id: number;
+  code: string;
+  method: string;
+  status: string;
+  updatedAt: string;
+  messages: CommunicationMessage[];
 }

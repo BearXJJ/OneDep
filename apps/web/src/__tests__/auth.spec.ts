@@ -10,6 +10,8 @@ import router from '../router'
 import { useAuthStore } from '../stores/auth'
 import DashboardView from '../views/DashboardView.vue'
 
+vi.mock('../components/ReviewerWorkspace.vue', () => ({ default: { template: '<div />' } }))
+
 vi.mock('../copilot/StepAlong.vue', () => ({ default: { template: '<div />' } }))
 
 afterEach(() => vi.unstubAllGlobals())

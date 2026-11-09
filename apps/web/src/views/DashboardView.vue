@@ -1,8 +1,8 @@
 <template>
-  <main class="dashboard-view onedep-workspace">
+  <main v-if="auth.user" class="dashboard-view onedep-workspace">
     <header class="topbar">
       <div class="brand-cell">
-        <img class="brand" :src="'/onedep/images/onedep_logo.png'" alt="OneDep" />
+        <img class="brand" :src="'/onedep/images/onedep_logo.png'" :alt="t('OneDep')" />
       </div>
       <div class="topbar-main">
         <button
@@ -11,13 +11,14 @@
           class="topbar-back"
           @click="returnToDepositionList"
         >
-          <span aria-hidden="true">←</span> 返回投递列表
+          <span aria-hidden="true">←</span>{{ t('返回投递列表') }}
         </button>
-        <span v-else class="area-name">{{ areaName }}</span>
+        <span v-else class="area-name">{{ t(areaName) }}</span>
         <div class="account-info">
-          <span class="account-role">{{ roleLabel }}</span>
+          <LanguageSwitch />
+          <span class="account-role">{{ roleLabel ? t(roleLabel) : '' }}</span>
           <span class="account-email" :title="auth.user?.email">{{ auth.user?.email }}</span>
-          <button type="button" :disabled="leaving" @click="logout">退出</button>
+          <button type="button" :disabled="leaving" @click="logout">{{ t('退出') }}</button>
         </div>
       </div>
     </header>
@@ -25,16 +26,14 @@
     <p v-if="error" class="logout-error" role="alert">{{ error }}</p>
 
     <div class="app-layout">
-      <aside class="sidebar" aria-label="主导航">
-        <nav><h2 class="section-heading">Navigation</h2>
+      <aside class="sidebar" :aria-label="t('主导航')">
+        <nav>
+          <h2 class="section-heading">{{ t('Navigation') }}</h2>
           <RouterLink class="nav-link" to="/">
-            
-            
-            <Document class="nav-icon" /><span>{{ navigationLabel }}</span>
+            <Document class="nav-icon" /><span>{{ t(navigationLabel) }}</span>
           </RouterLink>
           <RouterLink class="nav-link settings-link" to="/settings">
-            
-            <Setting class="nav-icon" /><span>个人设置</span>
+            <Setting class="nav-icon" /><span>{{ t('个人设置') }}</span>
           </RouterLink>
         </nav>
       </aside>
@@ -50,25 +49,21 @@
           @view-change="submitterEditing = $event"
         />
 
-        <div v-else class="work-items" aria-label="审校任务">
-          <div class="empty-state">
-            <span class="empty-icon" aria-hidden="true">
-              
-            </span>
-            <p>暂无工作事项</p>
-          </div>
-        </div>
+        <ReviewerWorkspace v-else />
       </section>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { Document, Setting } from "@element-plus/icons-vue"
+import LanguageSwitch from '@/components/LanguageSwitch.vue'
+import { t } from '@/locales'
+import { Document, Setting } from '@element-plus/icons-vue'
 import { computed, ref } from 'vue'
 import type { UserRole } from '@onedep/shared'
 import { useRoute, useRouter } from 'vue-router'
 
+import ReviewerWorkspace from '@/components/ReviewerWorkspace.vue'
 import AdminUsersPanel from '@/components/AdminUsersPanel.vue'
 import ProfileSettings from '@/components/ProfileSettings.vue'
 import SubmitterWorkspace from '@/components/SubmitterWorkspace.vue'
@@ -118,4 +113,3 @@ async function logout() {
   }
 }
 </script>
-

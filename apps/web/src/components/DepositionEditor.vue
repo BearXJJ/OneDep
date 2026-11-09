@@ -2,6 +2,7 @@
 import { t, locale } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import LanguageSwitch from './LanguageSwitch.vue'
+import CommunicationPanel from './CommunicationPanel.vue'
 import StepAlong from '@/copilot/StepAlong.vue'
 import type { Snapshot } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
@@ -365,35 +366,6 @@ const messages = computed(() => {
   const data = model.value.getValue('communication')
   return data === undefined ? [] : (data as AnswerRecord[])
 })
-const subject = ref('General question'),
-  messageBody = ref('')
-const subjects = [
-  'General question',
-  'Metadata corrections',
-  'File upload issue',
-  'Submission issue',
-  'Response to issues',
-  'Re-upload files',
-  'Citation update',
-  'Release request',
-  'Other',
-]
-const postMessage = () =>
-  action(async () => {
-    if (!messageBody.value.trim()) throw new Error('Message is required')
-    model.value.setValue('communication', [
-      ...messages.value,
-      {
-        recordId: crypto.randomUUID(),
-        subject: subject.value,
-        body: messageBody.value.trim(),
-        date: new Date().toISOString(),
-      },
-    ])
-    await saved()
-    messageBody.value = ''
-    notice.value = 'Message saved'
-  })
 const ligands = computed(() => {
   void version.value
   const value = model.value.getValue('molecules')
@@ -656,24 +628,15 @@ function readCopilotSnapshot(focusId: string | null): Snapshot {
             {{ t('Field sources') }}<ArrowRight />
           </button>
         </section>
-        <section v-else-if="tab === 'message'" class="outside-demo communication">
-          <h2>Messages</h2>
-          <article v-for="message in messages" :key="message.recordId" class="message">
-            <h3>
-              {{ message.subject }} <time>{{ message.date }}</time>
-            </h3>
-            <p>{{ message.body }}</p>
-          </article>
-          <p v-if="!messages.length">No messages</p>
-          <form v-if="editable" @submit.prevent="postMessage">
-            <h2>New message</h2>
-            <label
-              >Subject<select v-model="subject">
-                <option v-for="s in subjects" :key="s">{{ s }}</option>
-              </select></label
-            ><label>Message<textarea v-model="messageBody" rows="7" required /></label
-            ><button :disabled="busy" type="submit">Save message</button>
-          </form>
+        <section v-else-if="tab === 'message'">
+          <CommunicationPanel :deposition-id="current.id" />
+          <details v-if="messages.length">
+            <summary>{{ t('Saved draft notes') }}</summary>
+            <article v-for="message in messages" :key="String(message.recordId)">
+              <h3>{{ message.subject }}</h3>
+              <p>{{ message.body }}</p>
+            </article>
+          </details>
         </section>
         <section v-else-if="tab === 'view'">
           <div class="validation-actions">
