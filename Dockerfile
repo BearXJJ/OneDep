@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
 FROM node:22.23.3-bookworm-slim AS base
 WORKDIR /app
-ARG NPM_REGISTRY=https://registry.npmjs.org
-RUN npm install --global pnpm@12.9.1 --registry="$NPM_REGISTRY"
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM base AS dependencies
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm install --global pnpm@12.9.1 --registry="$NPM_REGISTRY"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/prisma7.config.ts ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
@@ -45,7 +47,7 @@ COPY --from=api-build /app/apps/api/dist ./dist
 COPY apps/api/adapters ./adapters
 COPY apps/api/prisma ./prisma
 COPY apps/api/prisma7.config.ts ./prisma7.config.ts
-RUN DATABASE_URL=postgresql://unused:unused@localhost:5432/unused pnpm exec prisma validate --config prisma7.config.ts \
+RUN DATABASE_URL=postgresql://unused:unused@localhost:5432/unused node node_modules/prisma/build/index.js validate --config prisma7.config.ts \
     && /opt/onedep-python/bin/python -c "import gemmi; from PIL import Image" \
     && node --input-type=module -e "await import('@onedep/shared/deposition'); await import('@onedep/shared/copilot'); await import('./dist/generated/prisma/client.js');"
 USER node

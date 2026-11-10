@@ -37,7 +37,7 @@ services:
   migrate:
     <<: *api-image
     restart: 'no'
-    command: [pnpm, exec, prisma, migrate, deploy, --config, prisma7.config.ts]
+    command: [node, node_modules/prisma/build/index.js, migrate, deploy, --config, prisma7.config.ts]
     environment:
       DATABASE_URL: postgresql://onedep:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}@postgres:5432/onedep?schema=public
     depends_on:
