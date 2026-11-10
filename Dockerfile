@@ -8,7 +8,7 @@ FROM base AS dependencies
 ARG NPM_REGISTRY=https://registry.npmjs.org
 RUN npm install --global pnpm@12.9.1 --registry="$NPM_REGISTRY"
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/api/package.json apps/api/prisma7.config.ts ./apps/api/
+COPY apps/api/package.json apps/api/prisma7.config.ts apps/api/tsconfig.json ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
