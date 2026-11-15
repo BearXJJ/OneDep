@@ -14750,5 +14750,17 @@
   "Add {label}": {
     "en": "Add {label}",
     "zh": "新增{label}"
+  },
+  "Corresponding author(s)": {
+    "zh": "通讯作者",
+    "en": "Corresponding author(s)"
+  },
+  "Principal investigator": {
+    "zh": "课题负责人",
+    "en": "Principal investigator"
+  },
+  "Other Authors": {
+    "zh": "其他作者",
+    "en": "Other Authors"
   }
 }

@@ -114,7 +114,7 @@ export const officialForms = {
             "name": "pdbx_contact_author",
             "category": "pdbx_contact_author",
             "variant": "responsible scientist",
-            "title": "responsible scientist",
+            "title": "Corresponding author(s)",
             "repeat": true,
             "conditions": [],
             "elements": [
@@ -1293,7 +1293,7 @@ export const officialForms = {
             "name": "pdbx_contact_author_1",
             "category": "pdbx_contact_author",
             "variant": "principal investigator/group leader",
-            "title": "principal investigator/group leader",
+            "title": "Principal investigator",
             "repeat": true,
             "conditions": [],
             "elements": [
@@ -2472,7 +2472,7 @@ export const officialForms = {
             "name": "pdbx_depui_status_flags",
             "category": "pdbx_depui_status_flags",
             "variant": "",
-            "title": "Contact information",
+            "title": "Other Authors",
             "repeat": false,
             "conditions": [],
             "elements": [
@@ -2503,7 +2503,7 @@ export const officialForms = {
             "name": "pdbx_contact_author_2",
             "category": "pdbx_contact_author",
             "variant": "investigator",
-            "title": "investigator",
+            "title": "Other Authors",
             "repeat": true,
             "conditions": [
               {
@@ -16462,7 +16462,7 @@ export const officialForms = {
             "name": "pdbx_contact_author",
             "category": "pdbx_contact_author",
             "variant": "responsible scientist",
-            "title": "responsible scientist",
+            "title": "Corresponding author(s)",
             "repeat": true,
             "conditions": [],
             "elements": [
@@ -17641,7 +17641,7 @@ export const officialForms = {
             "name": "pdbx_contact_author_1",
             "category": "pdbx_contact_author",
             "variant": "principal investigator/group leader",
-            "title": "principal investigator/group leader",
+            "title": "Principal investigator",
             "repeat": true,
             "conditions": [],
             "elements": [
@@ -18820,7 +18820,7 @@ export const officialForms = {
             "name": "pdbx_depui_status_flags",
             "category": "pdbx_depui_status_flags",
             "variant": "",
-            "title": "Contact information",
+            "title": "Other Authors",
             "repeat": false,
             "conditions": [],
             "elements": [
@@ -18851,7 +18851,7 @@ export const officialForms = {
             "name": "pdbx_contact_author_2",
             "category": "pdbx_contact_author",
             "variant": "investigator",
-            "title": "investigator",
+            "title": "Other Authors",
             "repeat": true,
             "conditions": [
               {

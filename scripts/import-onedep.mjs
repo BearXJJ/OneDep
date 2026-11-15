@@ -69,6 +69,12 @@ for(const [method,names] of Object.entries(pages)) {
    return title.replace(/\*?:\s*$/,'').trim();
   }
   function groupTitle(el) {
+   if(page==='contact') {
+    for(let parent=el.parentElement;parent&&parent!==center;parent=parent.parentElement) {
+     const heading=parent.querySelector(':scope > h2');
+     if(heading)return clean(heading.textContent);
+    }
+   }
    const firstControl=el.querySelector('input:not([type=hidden]),select,textarea');
    const own=[...el.querySelectorAll('h3,h4,legend')].find(h=>h.closest('[data-category]')===el&&(!firstControl||(h.compareDocumentPosition(firstControl)&4)));
    if(own)return clean(own.textContent);
@@ -110,7 +116,7 @@ for(const [method,names] of Object.entries(pages)) {
    const children=deduplicate([...el.querySelectorAll('[data-category]')].filter(n=>n.parentElement.closest('[data-category]')===el).map(group).filter(Boolean));
    const elements=[...fields,...children];
    if(!elements.length)return null;
-   return {kind:'group',name,category,variant,title:variant?variant:groupTitle(el),repeat:el.classList.contains('wwpdb_repeatable_block')||['audit_author','citation_author','em_author_list','software','pdbx_database_related','pdbx_related_exp_data_set','pdbx_struct_ref_seq_depositor_info'].includes(category),conditions:conditions(el),elements};
+   return {kind:'group',name,category,variant,title:page==='contact'?groupTitle(el):variant?variant:groupTitle(el),repeat:el.classList.contains('wwpdb_repeatable_block')||['audit_author','citation_author','em_author_list','software','pdbx_database_related','pdbx_related_exp_data_set','pdbx_struct_ref_seq_depositor_info'].includes(category),conditions:conditions(el),elements};
   }
   const elements=deduplicate([...center.querySelectorAll('[data-category]')].filter(el=>!el.parentElement.closest('[data-category]')).map(group).filter(Boolean));
   forms.push({name:page,title:page==='molecule_1'?'Macromolecule':titles.get(page),elements});
