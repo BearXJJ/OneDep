@@ -181,6 +181,15 @@ export function getDemoDefinition(id: DepositionProfile): ProfileDefinition {
               "_entity.id",
               required,
             ),
+            number(
+              "instanceCount",
+              "实例数量",
+              "_entity.pdbx_number_of_molecules",
+              "_entity.id",
+              {
+                readOnly: true,
+              },
+            ),
             text("entityType", "实体类型", "_entity.type", "_entity.id", {
               readOnly: true,
             }),

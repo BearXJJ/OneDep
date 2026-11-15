@@ -731,7 +731,7 @@ function applySuggestion(suggestion: Suggestion) {
                 <tr
                   v-for="(value, key) in Object.fromEntries(
                     Object.entries(file.facts as Record<string, unknown>).filter(
-                      ([key]) => key !== 'metadata',
+                      ([key]) => !['metadata', 'entities'].includes(key),
                     ),
                   )"
                   :key="key"
@@ -743,6 +743,34 @@ function applySuggestion(suggestion: Suggestion) {
             </table>
             <p v-for="conflict in file.conflicts" :key="conflict" class="missing">{{ conflict }}</p>
           </details>
+          <section v-if="current.answers.molecules" class="summary-block">
+            <h2>{{ t('Molecule') }}</h2>
+            <table class="entity-summary">
+              <thead>
+                <tr>
+                  <th>{{ t('Entity type') }}</th>
+                  <th>{{ t('Description') }}</th>
+                  <th>{{ t('Number') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="molecule in current.answers.molecules as AnswerRecord[]"
+                  :key="molecule.recordId"
+                >
+                  <td>{{ t(String(molecule.entityType)) }}</td>
+                  <td>{{ molecule.name }}</td>
+                  <td>
+                    {{
+                      molecule.instanceCount === undefined
+                        ? t('Not extracted')
+                        : molecule.instanceCount
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
           <button v-if="!current.files.length" @click="select('uploads')">
             {{ t('Upload files') }}
           </button>

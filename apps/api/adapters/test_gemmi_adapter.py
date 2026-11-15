@@ -36,6 +36,7 @@ END
             names = [decoded(v) for v in block.find_values('_entity.pdbx_description')]
             self.assertCountEqual(names, ['A MULTILINE PROTEIN NAME', 'SECOND PROTEIN', 'CALCIUM ION'])
             self.assertEqual(decoded(block.find_value('_struct.title')), 'STRUCTURE TITLE')
+            self.assertEqual(list(block.find_values('_entity.pdbx_number_of_molecules')), ['2', '1', '1'])
             # Passing through CIF must preserve the source descriptions.
             cif = Path(directory) / 'input.cif'
             doc.write_file(str(cif))

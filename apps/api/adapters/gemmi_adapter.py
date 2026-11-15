@@ -1,5 +1,6 @@
 """One JSON request on stdin; one result on stdout. File paths are server-owned."""
 import sys, json, hashlib, zipfile, math
+from collections import Counter
 from pathlib import Path
 import gemmi
 from PIL import Image
@@ -63,6 +64,17 @@ def coordinate(path):
             entities = {e.name:e for e in structure.entities}
             data['pdbx_seq_one_letter_code'] = [gemmi.cif.quote(gemmi.one_letter_code(entities[decoded(k)].full_sequence)) if entities[decoded(k)].full_sequence else '?' for k in data['entity_id']]
             block.set_mmcif_category('_entity_poly.', data, raw=True)
+    # Count instances in one model; additional models are alternative coordinates.
+    entity_by_subchain = {name: entity for entity in structure.entities for name in entity.subchains}
+    counts = Counter()
+    for chain in structure[0]:
+        for subchain in chain.subchains():
+            entity = entity_by_subchain[subchain.subchain_id()]
+            counts[entity.name] += 1 if entity.entity_type == gemmi.EntityType.Polymer else len(subchain)
+    entities = block.get_mmcif_category('_entity.', raw=True)
+    if 'pdbx_number_of_molecules' not in entities:
+        entities['pdbx_number_of_molecules'] = [str(counts[decoded(key)]) for key in entities['id']]
+        block.set_mmcif_category('_entity.', entities, raw=True)
     return doc, structure
 
 def extract(block, bindings):

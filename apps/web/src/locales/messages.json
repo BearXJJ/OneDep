@@ -14762,5 +14762,37 @@
   "Other Authors": {
     "zh": "其他作者",
     "en": "Other Authors"
+  },
+  "Entity type": {
+    "zh": "实体类型",
+    "en": "Entity type"
+  },
+  "Number": {
+    "zh": "数量",
+    "en": "Number"
+  },
+  "Not extracted": {
+    "zh": "未提取",
+    "en": "Not extracted"
+  },
+  "实例数量": {
+    "zh": "实例数量",
+    "en": "Instance count"
+  },
+  "polymer": {
+    "zh": "聚合物",
+    "en": "polymer"
+  },
+  "non-polymer": {
+    "zh": "非聚合物",
+    "en": "non-polymer"
+  },
+  "water": {
+    "zh": "水",
+    "en": "water"
+  },
+  "branched": {
+    "zh": "分支聚合物",
+    "en": "branched"
   }
 }
