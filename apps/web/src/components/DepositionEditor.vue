@@ -229,9 +229,10 @@ function uploadFile(role: string, slot: number, file: File) {
 }
 async function upload(role: string, slot: number, event: Event) {
   const input = event.target as HTMLInputElement
-  if (input.files?.length) {
-    await uploadFile(role, slot, input.files[0]!)
+  const file = input.files?.[0]
+  if (file) {
     input.value = ''
+    await uploadFile(role, slot, file)
   }
 }
 const dragTarget = ref('')

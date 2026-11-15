@@ -625,3 +625,55 @@ it('keeps saved answers clean after a same-value form event and detects real edi
   expect(wrapper.find('.editor-toolbar button').text()).toBe(t('Save'))
   wrapper.unmount()
 })
+
+it('clears the file picker when an upload fails so the same file can be selected again', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const auth = useAuthStore()
+  auth.initialized = true
+  auth.user = {
+    id: 1,
+    email: 'retry@example.test',
+    name: 'Retry',
+    ...emptyProfile,
+    role: 'SUBMITTER',
+  }
+  vi.stubGlobal('scrollTo', vi.fn())
+  const errors: unknown[] = []
+  const fetchMock = vi
+    .fn<typeof fetch>()
+    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockResolvedValueOnce(new Response(JSON.stringify(depositionFixture), { status: 201 }))
+  vi.stubGlobal('fetch', fetchMock)
+  const wrapper = mount(DepositionEditor, {
+    props: { deposition: depositionFixture },
+    global: {
+      plugins: [pinia, router],
+      stubs: { Survey: true, SurveyComponent: true },
+      config: { errorHandler: (error) => errors.push(error) },
+    },
+  })
+  await wrapper
+    .findAll('.tree-item')
+    .find((item) => item.text() === t('Re-upload files'))!
+    .trigger('click')
+  const picker = wrapper.find('input[type="file"]')
+  const input = picker.element as HTMLInputElement
+  const file = new File(['HEADER'], 'retry.pdb')
+  Object.defineProperty(input, 'files', { value: [file], configurable: true })
+  Object.defineProperty(input, 'value', {
+    value: 'C:\\fakepath\\retry.pdb',
+    writable: true,
+    configurable: true,
+  })
+  await picker.trigger('change')
+  await flushPromises()
+  expect(errors).toHaveLength(1)
+  expect(input.value).toBe('')
+  expect(wrapper.get('.editor-toolbar button').attributes('disabled')).toBeUndefined()
+  await picker.trigger('change')
+  await flushPromises()
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+  expect(errors).toHaveLength(1)
+  wrapper.unmount()
+})
