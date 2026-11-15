@@ -6,7 +6,7 @@ import CommunicationPanel from './CommunicationPanel.vue'
 import Copilot from '@/copilot/Copilot.vue'
 import type { Snapshot, Suggestion } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
 import { Helpers, QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
 import { ArrowRight, Back, Download, Delete, InfoFilled } from '@element-plus/icons-vue'
@@ -51,6 +51,9 @@ const current = ref(props.deposition),
   notice = ref(''),
   dirty = ref(false),
   version = ref(0)
+const saving = ref(false),
+  saveError = ref('')
+let pendingSave: Promise<void> | undefined
 const definition = computed(() => getProfileDefinition(current.value.profile))
 const model = shallowRef(createQuestionnaire(current.value.profile, current.value.answers))
 const editable = computed(() => current.value.status === 'DRAFT')
@@ -76,7 +79,7 @@ function configure() {
   const survey = model.value
   localizeSurvey(survey, current.value.profile)
   survey.questionTitleLocation = 'left'
-  survey.textUpdateMode = 'onTyping'
+  survey.textUpdateMode = 'onBlur'
   survey.applyTheme({
     isPanelless: true,
     cssVariables: {
@@ -94,13 +97,17 @@ function configure() {
   survey.showNavigationButtons = false
   survey.mode = editable.value ? 'edit' : 'display'
   const changed = () => {
-    dirty.value = !Helpers.checkIfValuesEqual(survey.data, current.value.answers, {
-      ignoreOrder: false,
-      caseSensitive: true,
-      trimStrings: false,
-      doNotConvertNumbers: true,
-    })
+    updateDirty()
+    notice.value = ''
     version.value++
+    if (dirty.value && editable.value) {
+      // Automatic network failures remain visible; retry is explicit via Save or a new edit.
+      void Promise.resolve()
+        .then(queueSave)
+        .catch((error: unknown) => {
+          saveError.value = error instanceof Error ? error.message : String(error)
+        })
+    }
   }
   survey.onValueChanged.add(changed)
   survey.onDynamicPanelRemoved.add(changed)
@@ -150,7 +157,21 @@ watch(
     if (value !== current.value) accept(value)
   },
 )
-onBeforeUnmount(() => model.value.dispose())
+function beforeUnload(event: BeforeUnloadEvent) {
+  flushInput()
+  if (dirty.value || saving.value) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+window.addEventListener('beforeunload', beforeUnload)
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
+  model.value.dispose()
+})
+onBeforeRouteLeave(() => saved())
+onBeforeRouteUpdate(() => saved())
+defineExpose({ saveDraft: saved })
 function select(name: string, recordId?: string) {
   tab.value = name
   selection.value = recordId === undefined ? name : 'macromolecules:' + recordId
@@ -166,11 +187,44 @@ function select(name: string, recordId?: string) {
 function selectItem(item: DepositionNavItem) {
   select(item.page, item.recordId)
 }
-async function saved() {
-  if (dirty.value)
-    accept(
-      await saveDeposition(current.value.id, current.value.revision, model.value.data as Answers),
-    )
+function updateDirty() {
+  dirty.value = !Helpers.checkIfValuesEqual(model.value.data, current.value.answers, {
+    ignoreOrder: false,
+    caseSensitive: true,
+    trimStrings: false,
+    doNotConvertNumbers: true,
+  })
+}
+function flushInput() {
+  const active = document.activeElement
+  if (active instanceof HTMLElement && content.value?.contains(active)) active.blur()
+}
+function saved(): Promise<void> {
+  flushInput()
+  return queueSave()
+}
+function queueSave(): Promise<void> {
+  if (pendingSave) return pendingSave
+  if (!dirty.value) return Promise.resolve()
+  pendingSave = persist().finally(() => {
+    pendingSave = undefined
+    saving.value = false
+  })
+  return pendingSave
+}
+async function persist() {
+  saving.value = true
+  while (dirty.value) {
+    const answers = structuredClone(model.value.data) as Answers
+    const value = await saveDeposition(current.value.id, current.value.revision, answers)
+    // Only advance the persisted baseline. Rebuilding the form would erase newer edits and focus.
+    current.value = value
+    updateDirty()
+    version.value++
+    emit('changed', value)
+  }
+  saveError.value = ''
+  notice.value = 'Draft saved'
 }
 async function action(work: () => Promise<void>) {
   if (busy.value) return
@@ -589,7 +643,9 @@ function applySuggestion(suggestion: Suggestion) {
     <div class="editor-toolbar">
       <span class="scope-key"><i />{{ t('黄色：原 demo 之外的内容') }}</span
       ><span v-if="busy">{{ t('Processing…') }}</span
-      ><span v-if="notice" role="status" class="notice">{{ t(notice) }}</span>
+      ><span v-if="saving" role="status">{{ t('Saving…') }}</span>
+      <span v-else-if="notice" role="status" class="notice">{{ t(notice) }}</span>
+      <span v-if="saveError" role="alert" class="error">{{ saveError }}</span>
       <button :disabled="busy || !editable" @click="save">
         {{ t('Save') }}{{ dirty ? ' *' : '' }}</button
       ><button :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</button>
@@ -623,6 +679,7 @@ function applySuggestion(suggestion: Suggestion) {
         :data-page="tab"
         :data-revision="version"
         :aria-busy="busy"
+        @input="notice = ''"
       >
         <h1 class="section-heading">{{ pageTitle }}</h1>
         <section v-if="tab === 'welcome'" class="instructions">

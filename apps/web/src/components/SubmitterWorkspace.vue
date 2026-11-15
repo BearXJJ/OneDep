@@ -56,6 +56,7 @@
 
     <DepositionEditor
       v-else-if="selected"
+      ref="editor"
       :deposition="selected"
       @back="closeDraft"
       @changed="replaceSelected"
@@ -85,7 +86,11 @@ const error = ref('')
 const emit = defineEmits<{ viewChange: [editing: boolean] }>()
 const inDetailView = computed(() => selectingMethod.value || selected.value !== null)
 
-defineExpose({ closeDraft })
+const editor = ref<InstanceType<typeof DepositionEditor>>()
+async function saveDraft() {
+  if (editor.value) await editor.value.saveDraft()
+}
+defineExpose({ closeDraft, saveDraft })
 
 watch(inDetailView, (value) => emit('viewChange', value), { immediate: true })
 
@@ -131,6 +136,7 @@ async function openDraft(id: number) {
 }
 
 async function closeDraft() {
+  await saveDraft()
   selected.value = null
   selectingMethod.value = false
   await loadList()

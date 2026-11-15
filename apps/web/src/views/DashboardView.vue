@@ -81,7 +81,7 @@ const router = useRouter()
 const leaving = ref(false)
 const error = ref('')
 const submitterEditing = ref(false)
-const submitterWorkspace = ref<{ closeDraft: () => Promise<void> } | null>(null)
+const submitterWorkspace = ref<InstanceType<typeof SubmitterWorkspace> | null>(null)
 const isAdmin = computed(() => auth.user?.role === 'ADMIN')
 const isSubmitter = computed(() => auth.user?.role === 'SUBMITTER')
 const isSettings = computed(() => route.name === 'settings')
@@ -97,8 +97,8 @@ const navigationLabel = computed(() => {
 })
 
 // 从顶部栏关闭当前草稿并返回投递列表。
-function returnToDepositionList() {
-  void submitterWorkspace.value?.closeDraft()
+async function returnToDepositionList() {
+  await submitterWorkspace.value?.closeDraft()
 }
 
 // 结束服务端会话后返回登录页。
@@ -106,6 +106,7 @@ async function logout() {
   leaving.value = true
   error.value = ''
   try {
+    await submitterWorkspace.value?.saveDraft()
     await auth.logout()
     await router.push('/login')
   } finally {

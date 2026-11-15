@@ -2,7 +2,7 @@ import { t } from '../locales'
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { SurveyComponent } from 'survey-vue3-ui'
-import type { Model } from 'survey-core'
+import { type Model, QuestionPanelDynamicModel } from 'survey-core'
 import { createPinia, setActivePinia } from 'pinia'
 import type { AdminUser, DepositionDetail } from '@onedep/shared'
 
@@ -11,6 +11,7 @@ import DepositionEditor from '../components/DepositionEditor.vue'
 import DepositionMethodSelector from '../components/DepositionMethodSelector.vue'
 import ProfileSettings from '../components/ProfileSettings.vue'
 import router from '../router'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import DashboardView from '../views/DashboardView.vue'
 
@@ -675,5 +676,196 @@ it('clears the file picker when an upload fails so the same file can be selected
   await flushPromises()
   expect(fetchMock).toHaveBeenCalledTimes(2)
   expect(errors).toHaveLength(1)
+  wrapper.unmount()
+})
+
+async function editingWorkspace(patch: (init: RequestInit) => Promise<Response>) {
+  const testRouter = createRouter({ history: createMemoryHistory(), routes: router.options.routes })
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const auth = useAuthStore()
+  auth.user = { id: 1, email: 'test@example.com', name: 'Test', ...emptyProfile, role: 'SUBMITTER' }
+  auth.initialized = true
+  let draft: DepositionDetail = {
+    ...depositionFixture,
+    answers: { molecules: [{ recordId: 'a', name: 'FtsZ', entityType: 'polymer' }] },
+  }
+  const errors: unknown[] = []
+  const fetchMock = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>(
+    async (path, init) => {
+      if (init?.method === 'PATCH') {
+        const response = await patch(init)
+        if (response.ok) draft = await response.clone().json()
+        return response
+      }
+      if (path === '/api/auth/logout') return new Response(null, { status: 204 })
+      if (path === '/api/depositions') return Response.json([draft])
+      if (path === '/api/depositions/1') return Response.json(draft)
+      throw new Error('Unexpected request: ' + path)
+    },
+  )
+  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('scrollTo', vi.fn())
+  await testRouter.push('/')
+  const wrapper = mount(App, {
+    global: {
+      plugins: [pinia, testRouter],
+      stubs: { SurveyComponent: true },
+      config: { errorHandler: (error) => errors.push(error) },
+    },
+  })
+  await flushPromises()
+  await wrapper.find('.submission-row').trigger('click')
+  await flushPromises()
+  await wrapper
+    .findAll('.tree-item')
+    .find((node) => node.text() === '1) FtsZ')!
+    .trigger('click')
+  const model = wrapper.findComponent(SurveyComponent).props('model') as Model
+  return { wrapper, model, fetchMock, errors, router: testRouter }
+}
+
+it('waits for saving before the topbar closes an edited draft', async () => {
+  let finish!: () => void
+  let written: Record<string, unknown> = {}
+  const { wrapper, model, fetchMock } = await editingWorkspace(async (init) => {
+    const body = JSON.parse(String(init.body))
+    written = body.answers
+    await new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    return Response.json({ ...depositionFixture, revision: 1, answers: body.answers })
+  })
+  model.setValue('title', 'Persist this title')
+  await wrapper.find('.topbar-back').trigger('click')
+  await flushPromises()
+  expect(wrapper.find('.editor').exists()).toBe(true)
+  expect(written.title).toBe('Persist this title')
+  finish()
+  await flushPromises()
+  expect(wrapper.find('.editor').exists()).toBe(false)
+  await wrapper.find('.submission-row').trigger('click')
+  await flushPromises()
+  await wrapper
+    .findAll('.tree-item')
+    .find((node) => node.text() === '1) FtsZ')!
+    .trigger('click')
+  expect((wrapper.findComponent(SurveyComponent).props('model') as Model).getValue('title')).toBe(
+    'Persist this title',
+  )
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1)
+  wrapper.unmount()
+})
+
+it('serializes autosaves and preserves edits made while the first request is pending', async () => {
+  const writes: { revision: number; answers: Record<string, unknown> }[] = []
+  let finish!: () => void
+  const { wrapper, model } = await editingWorkspace(async (init) => {
+    const body = JSON.parse(String(init.body))
+    writes.push(body)
+    if (writes.length === 1)
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
+    return Response.json({
+      ...depositionFixture,
+      revision: body.revision + 1,
+      answers: body.answers,
+    })
+  })
+  model.setValue('title', 'First')
+  await flushPromises()
+  expect(writes).toHaveLength(1)
+  model.setValue('title', 'Second')
+  await flushPromises()
+  expect(writes).toHaveLength(1)
+  finish()
+  await flushPromises()
+  expect(writes.map((write) => [write.revision, write.answers.title])).toEqual([
+    [0, 'First'],
+    [1, 'Second'],
+  ])
+  expect(model.getValue('title')).toBe('Second')
+  expect(wrapper.findComponent(SurveyComponent).props('model')).toBe(model)
+  expect(wrapper.find('.editor-toolbar').text()).toContain(t('Draft saved'))
+  wrapper.unmount()
+})
+
+it('keeps the editor and unsaved input when persistence fails', async () => {
+  const { wrapper, model } = await editingWorkspace(async () => {
+    throw new Error('Save unavailable')
+  })
+  model.setValue('title', 'Keep my input')
+  await flushPromises()
+  await wrapper.find('.topbar-back').trigger('click')
+  await flushPromises()
+  expect(wrapper.find('.editor').exists()).toBe(true)
+  expect(model.getValue('title')).toBe('Keep my input')
+  expect(wrapper.find('.editor-toolbar').text()).not.toContain(t('Draft saved'))
+  expect(wrapper.find('[role="alert"]').text()).toContain('Save unavailable')
+  wrapper.unmount()
+})
+
+it('saves a new contact only after its record identity has been assigned', async () => {
+  const records: Record<string, unknown>[][] = []
+  const { wrapper, model } = await editingWorkspace(async (init) => {
+    const body = JSON.parse(String(init.body))
+    records.push(body.answers.contact__pdbx_contact_author)
+    return Response.json({
+      ...depositionFixture,
+      revision: body.revision + 1,
+      answers: body.answers,
+    })
+  })
+  const contacts = model.getQuestionByName(
+    'contact__pdbx_contact_author',
+  ) as QuestionPanelDynamicModel
+  contacts.addPanel()
+  await flushPromises()
+  expect(records).toHaveLength(1)
+  expect(records[0]![0]!.recordId).toEqual(expect.any(String))
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+it('flushes the draft before navigating to settings', async () => {
+  let finish!: () => void
+  const { wrapper, model, router } = await editingWorkspace(async (init) => {
+    const body = JSON.parse(String(init.body))
+    await new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    return Response.json({ ...depositionFixture, revision: 1, answers: body.answers })
+  })
+  model.setValue('title', 'Before settings')
+  await flushPromises()
+  const navigation = router.push('/settings')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/')
+  expect(wrapper.find('.editor').exists()).toBe(true)
+  finish()
+  await navigation
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/settings')
+  wrapper.unmount()
+})
+
+it('persists changes before the outer logout ends the session', async () => {
+  let finish!: () => void
+  const { wrapper, model, fetchMock, router } = await editingWorkspace(async (init) => {
+    const body = JSON.parse(String(init.body))
+    await new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    return Response.json({ ...depositionFixture, revision: 1, answers: body.answers })
+  })
+  model.setValue('title', 'Before logout')
+  await wrapper.find('.account-info button').trigger('click')
+  await flushPromises()
+  expect(fetchMock.mock.calls.some(([path]) => path === '/api/auth/logout')).toBe(false)
+  finish()
+  await flushPromises()
+  expect(fetchMock.mock.calls.some(([path]) => path === '/api/auth/logout')).toBe(true)
+  expect(router.currentRoute.value.path).toBe('/login')
   wrapper.unmount()
 })
