@@ -1,4 +1,4 @@
-import {t} from '../locales'
+import { t } from '../locales'
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { SurveyComponent } from 'survey-vue3-ui'
@@ -550,6 +550,8 @@ it('tracks each molecule separately and advances from the selected molecule', as
               sequence: 'MG',
               pdbx_depui_entity_features__type: 'None of these',
             },
+            { recordId: 'ligand', name: 'Calcium', entityType: 'non-polymer' },
+            { recordId: 'water', name: 'Water', entityType: 'water' },
             { recordId: 'b', name: 'Incomplete molecule', entityType: 'polymer' },
           ],
         },
@@ -560,10 +562,20 @@ it('tracks each molecule separately and advances from the selected molecule', as
   await flushPromises()
   const first = wrapper.findAll('.tree-item').find((x) => x.text() === '1) Complete molecule')!
   const second = wrapper.findAll('.tree-item').find((x) => x.text() === '2) Incomplete molecule')!
+  expect(wrapper.findAll('.tree-item').some((item) => /Calcium|Water/.test(item.text()))).toBe(
+    false,
+  )
   expect(first.find('.tree-status').classes()).toContain('complete')
   expect(second.find('.tree-status').classes()).toContain('missing')
   await second.trigger('click')
   await flushPromises()
+  const survey = wrapper.findComponent(SurveyComponent).props('model') as Model
+  const molecules = survey.getQuestionByName(
+    'molecules',
+  ) as import('survey-core').QuestionPanelDynamicModel
+  expect(molecules.visiblePanels).toHaveLength(2)
+  expect(molecules.currentPanel.getQuestionByName('recordId').value).toBe('b')
+  expect(survey.data.molecules).toHaveLength(4)
   expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(
     '2) Incomplete molecule',
   )
@@ -571,10 +583,11 @@ it('tracks each molecule separately and advances from the selected molecule', as
     .findAll('button')
     .find((b) => b.text() === t('Continue to next section'))!
     .trigger('click')
-  expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(t('Crystal information'))
+  expect(wrapper.find('#deposition-content > .section-heading').text()).toBe(
+    t('Crystal information'),
+  )
   wrapper.unmount()
 })
-
 
 it('keeps saved answers clean after a same-value form event and detects real edits', async () => {
   const pinia = createPinia()
@@ -590,7 +603,10 @@ it('keeps saved answers clean after a same-value form event and detects real edi
     },
     global: { plugins: [pinia, router], stubs: { Survey: true, SurveyComponent: true } },
   })
-  await wrapper.findAll('.tree-item').find((node) => node.text() === '1) FtsZ')!.trigger('click')
+  await wrapper
+    .findAll('.tree-item')
+    .find((node) => node.text() === '1) FtsZ')!
+    .trigger('click')
   await flushPromises()
   const model = wrapper.findComponent(SurveyComponent).props('model') as Model
   model.onValueChanged.fire(model, {

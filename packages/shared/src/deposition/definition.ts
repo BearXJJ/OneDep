@@ -303,6 +303,7 @@ export function getProfileDefinition(id: DepositionProfile): ProfileDefinition {
         {
           ...structuredClone(original),
           title: "Macromolecule",
+          templateVisibleIf: "{panel.entityType} = 'polymer'",
           templateElements: [
             original.templateElements[0]!,
             ...convert(page.elements, "molecules"),

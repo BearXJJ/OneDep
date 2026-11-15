@@ -30,6 +30,7 @@ function answers(): Answers {
       {
         recordId: "entity-1",
         name: "Protein A",
+        entityType: "polymer",
         polymerType: "polypeptide(L)",
         chainIds: "A,B",
         sequence: "MAG",
@@ -37,6 +38,7 @@ function answers(): Answers {
       {
         recordId: "entity-2",
         name: "Protein B",
+        entityType: "polymer",
         polymerType: "polypeptide(L)",
         chainIds: "C",
         sequence: "GLY",

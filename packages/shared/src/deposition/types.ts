@@ -69,6 +69,7 @@ export interface Group {
   elements: Element[];
 }
 export interface Repeat {
+  templateVisibleIf?: Expr;
   visibleIf?: Expr;
   type: "paneldynamic";
   name: string;

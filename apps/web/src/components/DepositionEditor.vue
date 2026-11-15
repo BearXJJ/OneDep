@@ -158,8 +158,9 @@ function select(name: string, recordId?: string) {
   if (page) model.value.currentPage = page
   if (recordId !== undefined) {
     const q = model.value.getQuestionByName('molecules') as QuestionPanelDynamicModel
-    const rows = q.value as AnswerRecord[]
-    q.currentIndex = rows.findIndex((r) => r.recordId === recordId)
+    q.currentPanel = q.visiblePanels.find(
+      (panel) => panel.getQuestionByName('recordId').value === recordId,
+    )!
   }
 }
 function selectItem(item: DepositionNavItem) {
@@ -297,8 +298,8 @@ const statistics = computed(() => {
     function count(q: SurveyQuestion, stats: PageProgress) {
       if (!q.isVisible || !q.isParentVisible || q.name === 'recordId') return
       if (q instanceof QuestionPanelDynamicModel) {
-        if (q.panels.length)
-          q.panels.forEach((panel) => {
+        if (q.visiblePanels.length)
+          q.visiblePanels.forEach((panel) => {
             const recordStats: PageProgress = {
               total: 0,
               completed: 0,

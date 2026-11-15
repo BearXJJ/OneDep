@@ -43,21 +43,23 @@ export function depositionNavigation(
       item.children =
         rows === undefined
           ? []
-          : (rows as AnswerRecord[]).map((row, index) => ({
-              id: node.id + ':' + row.recordId,
-              page,
-              recordId: row.recordId,
-              title:
-                typeof row.name === 'string' && row.name.length > 0
-                  ? `${index + 1}) ${row.name}`
-                  : `${t('Molecule')} ${index + 1}`,
-              extra: false,
-              state:
-                records[node.records! + ':' + row.recordId]!.requiredCompleted ===
-                records[node.records! + ':' + row.recordId]!.required
-                  ? 'complete'
-                  : 'missing',
-            }))
+          : (rows as AnswerRecord[])
+              .filter((row) => records[node.records! + ':' + row.recordId] !== undefined)
+              .map((row, index) => ({
+                id: node.id + ':' + row.recordId,
+                page,
+                recordId: row.recordId,
+                title:
+                  typeof row.name === 'string' && row.name.length > 0
+                    ? `${index + 1}) ${row.name}`
+                    : `${t('Molecule')} ${index + 1}`,
+                extra: false,
+                state:
+                  records[node.records! + ':' + row.recordId]!.requiredCompleted ===
+                  records[node.records! + ':' + row.recordId]!.required
+                    ? 'complete'
+                    : 'missing',
+              }))
       if (!item.children.length)
         item.children = [
           {
