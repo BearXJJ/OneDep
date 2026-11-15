@@ -68,6 +68,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       UPLOAD_DIR: /data/uploads
+      UPLOAD_MAX_FILE_MB: ${UPLOAD_MAX_FILE_MB:?Set UPLOAD_MAX_FILE_MB in .env.production}
       ONEDEP_PYTHON: ${ONEDEP_PYTHON:?Set ONEDEP_PYTHON in .env.production}
       GEMMI_TIMEOUT_MS: ${GEMMI_TIMEOUT_MS:?Set GEMMI_TIMEOUT_MS in .env.production}
       GEMMI_MAX_OUTPUT_BYTES: ${GEMMI_MAX_OUTPUT_BYTES:?Set GEMMI_MAX_OUTPUT_BYTES in .env.production}
@@ -91,6 +92,8 @@ services:
       context: .
       target: web
     restart: unless-stopped
+    environment:
+      UPLOAD_MAX_REQUEST_MB: ${UPLOAD_MAX_REQUEST_MB:?Set UPLOAD_MAX_REQUEST_MB in .env.production}
     ports:
       - '${WEB_BIND_ADDRESS:?Set WEB_BIND_ADDRESS in .env.production}:${WEB_PORT:?Set WEB_PORT in .env.production}:80'
     depends_on:

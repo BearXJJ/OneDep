@@ -21,6 +21,7 @@ const configured = () => ({
   REDIS_HOST: '127.0.0.1',
   REDIS_PORT: '16379',
   UPLOAD_DIR: 'uploads',
+  UPLOAD_MAX_FILE_MB: '1024',
   ONEDEP_PYTHON: 'python.exe',
   GEMMI_TIMEOUT_MS: '90000',
   GEMMI_MAX_OUTPUT_BYTES: '4194304',
@@ -38,6 +39,8 @@ describe('required runtime configuration', () => {
   it('rejects invalid ports and process limits', () => {
     for (const [key, value] of [
       ['PORT', '0'],
+      ['UPLOAD_MAX_FILE_MB', '0'],
+      ['UPLOAD_MAX_FILE_MB', '1.5'],
       ['REDIS_PORT', '70000'],
       ['GEMMI_TIMEOUT_MS', 'abc'],
       ['GEMMI_MAX_OUTPUT_BYTES', '-1'],

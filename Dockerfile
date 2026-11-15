@@ -55,4 +55,4 @@ CMD ["node", "dist/main.js"]
 
 FROM nginx:stable-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx.conf /etc/nginx/templates/default.conf.template

@@ -92,11 +92,7 @@ export class DepositionsController {
   }
 
   @Post(':id/files/:kind/:slot')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { files: 1, fileSize: 100 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   uploadFile(
     @Param('id', ParseIntPipe) id: number,
     @Param('kind') kind: string,

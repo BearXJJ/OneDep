@@ -24,6 +24,7 @@ export function validateRuntimeConfig(input: Record<string, unknown>) {
     'ONEDEP_PYTHON',
     'GEMMI_TIMEOUT_MS',
     'GEMMI_MAX_OUTPUT_BYTES',
+    'UPLOAD_MAX_FILE_MB',
   ]) {
     if (typeof env[key] !== 'string' || !env[key].trim())
       throw new Error('Missing configuration: ' + key);
@@ -46,6 +47,7 @@ export function validateRuntimeConfig(input: Record<string, unknown>) {
     'REDIS_PORT',
     'GEMMI_TIMEOUT_MS',
     'GEMMI_MAX_OUTPUT_BYTES',
+    'UPLOAD_MAX_FILE_MB',
   ]) {
     const value = Number(env[key]);
     if (!Number.isSafeInteger(value) || value <= 0)

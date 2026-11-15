@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
@@ -48,12 +49,14 @@ const json = (v: unknown) => v as Prisma.InputJsonValue;
 @Injectable()
 export class DepositionsService {
   private readonly uploadDir: string;
+  private readonly uploadMaxFileMB: number;
   private readonly gemmi: GemmiConfig;
   constructor(
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
     this.uploadDir = resolve(config.getOrThrow<string>('UPLOAD_DIR'));
+    this.uploadMaxFileMB = config.getOrThrow<number>('UPLOAD_MAX_FILE_MB');
     this.gemmi = {
       python: config.getOrThrow<string>('ONEDEP_PYTHON'),
       timeoutMs: Number(config.getOrThrow('GEMMI_TIMEOUT_MS')),
@@ -217,8 +220,12 @@ export class DepositionsService {
     const current = await this.owned(id, user, true);
     this.revision(current, revision);
     const profile = this.profile(current);
-    if (!file || file.size <= 0 || file.size > 100 * 1024 * 1024)
-      throw new BadRequestException('请选择 100 MB 以内的非空文件。');
+    if (!file || file.size <= 0)
+      throw new BadRequestException('请选择非空文件。');
+    if (file.size > this.uploadMaxFileMB * 1024 * 1024)
+      throw new PayloadTooLargeException(
+        `文件超过 ${this.uploadMaxFileMB} MiB 上传限制。`,
+      );
     const issues = validateFileManifest(profile, [
       { id: 'new', role: kind, slot, originalName: file.originalname },
     ]);
