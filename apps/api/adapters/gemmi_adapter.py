@@ -30,6 +30,33 @@ def coordinate(path):
             if data:
                 block.set_mmcif_category(cat, data, raw=True)
     if path.suffix.lower() == '.pdb':
+        # Gemmi assigns entities but does not preserve COMPND/HETNAM descriptions.
+        lines = path.read_text(encoding='ascii').splitlines()
+        compounds, compound, ligand_names = [], {}, {}
+        for field in ' '.join(line[10:80].strip() for line in lines if line.startswith('COMPND')).split(';'):
+            key, separator, value = field.strip().partition(':')
+            if not separator:
+                continue
+            if key == 'MOL_ID':
+                compound = {}
+                compounds.append(compound)
+            compound[key] = value.strip()
+        chain_names = {chain.strip(): c['MOLECULE'] for c in compounds if 'MOLECULE' in c and 'CHAIN' in c for chain in c['CHAIN'].split(',')}
+        for line in lines:
+            if line.startswith('HETNAM'):
+                ligand_names.setdefault(line[11:14].strip(), []).append(line[15:70].strip())
+        subchain_entities = {subchain: e for e in structure.entities for subchain in e.subchains}
+        names = {}
+        for chain in structure[0]:
+            for residue in chain:
+                entity = subchain_entities[residue.subchain]
+                if entity.entity_type == gemmi.EntityType.Polymer and chain.name in chain_names:
+                    names[entity.name] = chain_names[chain.name]
+                elif entity.entity_type == gemmi.EntityType.NonPolymer and residue.name in ligand_names:
+                    names[entity.name] = ' '.join(ligand_names[residue.name])
+        data = block.get_mmcif_category('_entity.', raw=True)
+        data['pdbx_description'] = [gemmi.cif.quote(names[decoded(key)]) if decoded(key) in names else '?' for key in data['id']]
+        block.set_mmcif_category('_entity.', data, raw=True)
         # Full SEQRES sequences are provided by Gemmi, not inferred from ATOM gaps.
         data = block.get_mmcif_category('_entity_poly.', raw=True)
         if data:
@@ -181,8 +208,9 @@ def export(request):
         archive.writestr('submission.json',json.dumps(request['snapshot'],ensure_ascii=False,indent=2))
     return {'atoms':atoms,'preservedCategories':len(original)-len(touched),'boundValues':len(expected),'sha256':hashlib.file_digest(open(request['zipPath'],'rb'),'sha256').hexdigest()}
 
-request=json.load(sys.stdin)
-if request['action']=='inspect': result=inspect(request)
-elif request['action']=='export': result=export(request)
-else: raise ValueError('Unknown action: '+request['action'])
-print(json.dumps(result,ensure_ascii=False,allow_nan=False))
+if __name__ == '__main__':
+    request=json.load(sys.stdin)
+    if request['action']=='inspect': result=inspect(request)
+    elif request['action']=='export': result=export(request)
+    else: raise ValueError('Unknown action: '+request['action'])
+    print(json.dumps(result,ensure_ascii=False,allow_nan=False))
