@@ -9,7 +9,7 @@ import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vu
 import { useRouter } from 'vue-router'
 import { SurveyComponent } from 'survey-vue3-ui'
 import { Helpers, QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
-import { ArrowRight, Back, Download, Refresh, Delete, InfoFilled } from '@element-plus/icons-vue'
+import { ArrowRight, Back, Download, Delete, InfoFilled } from '@element-plus/icons-vue'
 import 'survey-core/survey-core.css'
 import type { DepositionDetail, DepositionFileKind } from '@onedep/shared'
 import {
@@ -26,7 +26,6 @@ import {
   checkDeposition,
   depositionFileUrl,
   getDeposition,
-  reparseDeposition,
   removeDepositionFile,
   saveDeposition,
   submitDeposition,
@@ -249,12 +248,6 @@ async function dropFile(role: string, slot: number, event: DragEvent) {
     throw new Error(t('Drop one file into each upload slot'))
   await uploadFile(role, slot, event.dataTransfer.files[0]!)
 }
-const reparse = (id: number) =>
-  action(async () => {
-    await saved()
-    accept(await reparseDeposition(current.value.id, id, current.value.revision))
-    notice.value = 'File parsed'
-  })
 const remove = (id: number) =>
   action(async () => {
     await saved()
@@ -397,7 +390,6 @@ const navPages = computed(() => {
 })
 const pageTitle = computed(() => {
   if (tab.value === 'requirements') return t('List requirements')
-  if (tab.value === 'origins') return t('Field sources')
   const n = navPages.value.find(
     (n) => n.id === selection.value || (selection.value === tab.value && n.page === tab.value),
   )
@@ -706,9 +698,7 @@ function applySuggestion(suggestion: Suggestion) {
                 <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
                   {{ fileOf(rule.role, slot)!.parseError }}
                 </p>
-                <button :disabled="busy || !editable" @click="reparse(fileOf(rule.role, slot)!.id)">
-                  <Refresh />{{ t('Reparse') }}</button
-                ><button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
+                <button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
                   <Delete />{{ t('Remove') }}
                 </button></template
               ><span v-else>{{ t('Awaiting upload') }}</span>
@@ -752,9 +742,7 @@ function applySuggestion(suggestion: Suggestion) {
             <p v-for="conflict in file.conflicts" :key="conflict" class="missing">{{ conflict }}</p>
           </details>
           <button v-if="!current.files.length" @click="select('uploads')">
-            {{ t('Upload files') }}</button
-          ><button class="text-link" @click="select('origins')">
-            {{ t('Field sources') }}<ArrowRight />
+            {{ t('Upload files') }}
           </button>
         </section>
         <section v-else-if="tab === 'message'">
@@ -790,36 +778,6 @@ function applySuggestion(suggestion: Suggestion) {
               </li>
             </ul>
           </details>
-        </section>
-        <section v-else-if="tab === 'origins'">
-          <table>
-            <thead>
-              <tr>
-                <th>{{ t('Field / record') }}</th>
-                <th>{{ t('Source') }}</th>
-                <th>{{ t('CIF tag') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(origin, i) in current.origins" :key="i">
-                <td>
-                  {{
-                    [origin.address.collection, origin.address.recordId, origin.address.field]
-                      .filter(Boolean)
-                      .join(' / ')
-                  }}
-                </td>
-                <td>
-                  {{
-                    origin.source === 'user'
-                      ? t('Edited')
-                      : `${t('File')} ${origin.fileId} · v${origin.fileRevision}`
-                  }}
-                </td>
-                <td>{{ origin.tag }}</td>
-              </tr>
-            </tbody>
-          </table>
         </section>
         <template v-else>
           <section v-if="tab === 'ligandsummary'" class="outside-demo">
