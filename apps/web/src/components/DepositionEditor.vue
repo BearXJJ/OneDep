@@ -126,6 +126,7 @@ function configure() {
   const molecules = survey.getQuestionByName('molecules') as QuestionPanelDynamicModel
   molecules.renderMode = 'tab'
   molecules.templateTitle = '{panel.name}'
+  molecules.templateTabTitle = '{panel.name}'
 }
 configure()
 watch(locale, () => {
