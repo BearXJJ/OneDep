@@ -1,4 +1,8 @@
 {
+  "The file exceeds the server upload limit.": {
+    "en": "The file exceeds the server upload limit.",
+    "zh": "文件超过服务器上传大小限制。"
+  },
   "12345": {
     "en": "12345",
     "zh": "12345"

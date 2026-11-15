@@ -1,5 +1,9 @@
+import { t } from '@/locales'
+
 export async function httpError(response: Response): Promise<Error> {
   const heading = 'HTTP ' + response.status + ' ' + response.statusText
+  if (response.status === 413)
+    return new Error(heading + '\n' + t('The file exceeds the server upload limit.'))
   if (response.headers.get('content-type')?.includes('application/json')) {
     const body = (await response.json()) as { message: unknown }
     if (typeof body.message === 'string') return new Error(heading + '\n' + body.message)
