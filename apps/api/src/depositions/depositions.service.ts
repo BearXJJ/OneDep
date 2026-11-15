@@ -312,6 +312,32 @@ export class DepositionsService {
       values: ParsePatch['values'];
       records: ParsePatch['records'];
     };
+    const collections = new Set([
+      ...patch.records.map((record) => record.collection),
+      ...[...origins.values()]
+        .filter(
+          (origin) =>
+            origin.source === 'file' && origin.address.field === 'recordId',
+        )
+        .map((origin) => origin.address.collection!),
+    ]);
+    for (const collection of collections) {
+      const ids = new Set(
+        patch.records
+          .filter((record) => record.collection === collection)
+          .map((record) => record.recordId),
+      );
+      if (collection in answers)
+        answers[collection] = (answers[collection] as AnswerRecord[]).filter(
+          (record) => ids.has(record.recordId),
+        );
+      for (const [key, origin] of origins)
+        if (
+          origin.address.collection === collection &&
+          !ids.has(origin.address.recordId!)
+        )
+          origins.delete(key);
+    }
     const conflicts: string[] = [];
     const incoming = new Set(patch.values.map((v) => addressKey(v.address)));
     for (const [key, origin] of origins) {
