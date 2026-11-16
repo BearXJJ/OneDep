@@ -2,7 +2,6 @@ import { httpError } from './http-error'
 import type {
   DepositionCreationOptions,
   DepositionDetail,
-  DepositionFileKind,
   DepositionSummary,
 } from '@onedep/shared'
 import type { Answers } from '@onedep/shared/deposition'
@@ -27,20 +26,6 @@ export const checkDeposition = (id: number, revision: number) =>
   request<DepositionDetail>(`/${id}/check`, { method: 'POST', ...json({ revision }) })
 export const reparseDeposition = (id: number, fileId: number, revision: number) =>
   request<DepositionDetail>(`/${id}/reparse/${fileId}`, { method: 'POST', ...json({ revision }) })
-export function uploadDepositionFile(
-  id: number,
-  kind: DepositionFileKind,
-  slot: number,
-  revision: number,
-  file: File,
-) {
-  const body = new FormData()
-  body.append('file', file)
-  return request<DepositionDetail>(`/${id}/files/${kind}/${slot}?revision=${revision}`, {
-    method: 'POST',
-    body,
-  })
-}
 export const removeDepositionFile = (id: number, fileId: number, revision: number) =>
   request<void>(`/${id}/files/${fileId}?revision=${revision}`, { method: 'DELETE' })
 export const depositionFileUrl = (id: number, fileId: number) =>

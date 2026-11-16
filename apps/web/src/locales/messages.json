@@ -14798,5 +14798,13 @@
   "Saving…": {
     "zh": "正在保存…",
     "en": "Saving…"
+  },
+  "Upload complete; waiting for parsing result…": {
+    "zh": "上传完成，等待解析结果…",
+    "en": "Upload complete; waiting for parsing result…"
+  },
+  "Uploading…": {
+    "zh": "正在上传…",
+    "en": "Uploading…"
   }
 }

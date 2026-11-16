@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t, locale, translations } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
+import AppFileUpload from './ui/AppFileUpload.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import CommunicationPanel from './CommunicationPanel.vue'
 import Copilot from '@/copilot/Copilot.vue'
@@ -11,7 +12,7 @@ import { SurveyComponent } from 'survey-vue3-ui'
 import { Helpers, QuestionPanelDynamicModel, type Question as SurveyQuestion } from 'survey-core'
 import { ArrowRight, Back, Download, Delete, InfoFilled } from '@element-plus/icons-vue'
 import 'survey-core/survey-core.css'
-import type { DepositionDetail, DepositionFileKind } from '@onedep/shared'
+import type { DepositionDetail } from '@onedep/shared'
 import {
   createQuestionnaire,
   flattenAnswers,
@@ -29,7 +30,6 @@ import {
   removeDepositionFile,
   saveDeposition,
   submitDeposition,
-  uploadDepositionFile,
 } from '@/data/depositions'
 import {
   depositionNavigation,
@@ -279,43 +279,13 @@ const logout = () =>
     await auth.logout()
     await router.push('/login')
   })
-function uploadFile(role: string, slot: number, file: File) {
-  return action(async () => {
-    await saved()
-    accept(
-      await uploadDepositionFile(
-        current.value.id,
-        role as DepositionFileKind,
-        slot,
-        current.value.revision,
-        file,
-      ),
-    )
-    notice.value = 'File uploaded and parsed'
-  })
+async function prepareUpload(role: string, slot: number) {
+  await saved()
+  return `/api/depositions/${current.value.id}/files/${role}/${slot}?revision=${current.value.revision}`
 }
-async function upload(role: string, slot: number, event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    input.value = ''
-    await uploadFile(role, slot, file)
-  }
-}
-const dragTarget = ref('')
-function dragOver(role: string, slot: number, event: DragEvent) {
-  if (!editable.value || busy.value) return
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'copy'
-    dragTarget.value = role + ':' + slot
-  }
-}
-async function dropFile(role: string, slot: number, event: DragEvent) {
-  dragTarget.value = ''
-  if (!editable.value || busy.value) return
-  if (!event.dataTransfer || event.dataTransfer.files.length !== 1)
-    throw new Error(t('Drop one file into each upload slot'))
-  await uploadFile(role, slot, event.dataTransfer.files[0]!)
+function completeUpload(response: unknown) {
+  accept(response as DepositionDetail)
+  notice.value = 'File uploaded and parsed'
 }
 const remove = (id: number) =>
   action(async () => {
@@ -743,27 +713,13 @@ function applySuggestion(suggestion: Suggestion) {
         <section v-else-if="tab === 'uploads'" class="files">
           <article v-for="rule in definition.files" :key="rule.role" class="file-group">
             <h2>{{ t(rule.title) }}</h2>
-            <div
-              v-for="slot in rule.max"
-              :key="slot"
-              class="file-slot"
-              :class="{
-                'drag-over': dragTarget === rule.role + ':' + slot,
-                'upload-disabled': busy || !editable,
-              }"
-              @dragover.prevent="dragOver(rule.role, slot, $event)"
-              @dragleave="dragTarget = ''"
-              @drop.prevent="dropFile(rule.role, slot, $event)"
-            >
-              <span v-if="editable" class="drop-hint">{{
-                t('Drag a file here or choose a file')
-              }}</span>
-              <span v-if="rule.max > 1">{{ slot }}</span
-              ><template v-if="fileOf(rule.role, slot)"
-                ><a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
+            <div v-for="slot in rule.max" :key="slot" class="file-slot">
+              <span v-if="rule.max > 1">{{ slot }}</span>
+              <template v-if="fileOf(rule.role, slot)">
+                <a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
                   fileOf(rule.role, slot)!.originalName
-                }}</a
-                ><span
+                }}</a>
+                <span
                   >{{ t('v') }}{{ fileOf(rule.role, slot)!.revision }} ·
                   {{ stateLabel(fileOf(rule.role, slot)!.parseState) }}</span
                 >
@@ -772,17 +728,19 @@ function applySuggestion(suggestion: Suggestion) {
                 </p>
                 <button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
                   <Delete />{{ t('Remove') }}
-                </button></template
-              ><span v-else>{{ t('Awaiting upload') }}</span>
-              <label v-if="editable" class="file-picker"
-                >{{ fileOf(rule.role, slot) ? t('Replace') : t('Upload')
-                }}<input
-                  type="file"
-                  :aria-label="`${t(rule.title)} ${t('Slot')} ${slot}`"
-                  :accept="rule.extensions.join(',')"
-                  :disabled="busy"
-                  @change="upload(rule.role, slot, $event)"
-              /></label>
+                </button>
+              </template>
+              <span v-else>{{ t('Awaiting upload') }}</span>
+              <AppFileUpload
+                v-if="editable"
+                :label="`${t(rule.title)} ${t('Slot')} ${slot}`"
+                :accept="rule.extensions.join(',')"
+                :disabled="busy"
+                :replace="!!fileOf(rule.role, slot)"
+                :prepare="() => prepareUpload(rule.role, slot)"
+                @busy="busy = $event"
+                @uploaded="completeUpload"
+              />
             </div>
           </article>
         </section>
