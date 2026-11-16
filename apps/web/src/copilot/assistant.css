@@ -114,6 +114,9 @@ svg[data-squircle-outline] > path {
   color: #244934;
   text-align: left;
 }
+.sa-launcher > span {
+  display: contents;
+}
 .sa-launcher-copy {
   font-size: 13px;
   font-weight: 550;
@@ -206,9 +209,7 @@ svg[data-squircle-outline] > path {
 .sa-answer {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   padding: 11px 0 7px;
-  scrollbar-width: thin;
   overscroll-behavior: contain;
 }
 .sa-answer h3 {

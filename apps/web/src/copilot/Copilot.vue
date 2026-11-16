@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppButton from '@/components/ui/AppButton.vue'
+import { AppButton, AppScrollbar } from '@/components/ui'
 import { t } from '@/locales'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { Setting, Close, Back, Refresh, TopRight } from '@element-plus/icons-vue'
@@ -161,21 +161,15 @@ async function test() {
               <Close />
             </AppButton>
           </header>
-          <div class="sa-answer">
+          <AppScrollbar class="sa-answer">
             <h3>{{ t('Model connection') }}</h3>
             <p>{{ t('Configured in the OneDep server.') }}</p>
             <p v-if="connection" role="status">{{ connection }}</p>
-          </div>
+          </AppScrollbar>
           <div class="sa-settings-actions">
-            <KyantSurface
-              as="button"
-              :radius="12"
-              :clip="false"
-              class="sa-button primary"
-              :disabled="testing"
-              @click="test"
-              >{{ testing ? t('Connecting…') : t('Test connection') }}</KyantSurface
-            >
+            <AppButton class="sa-button primary" :disabled="testing" @click="test">{{
+              testing ? t('Connecting…') : t('Test connection')
+            }}</AppButton>
           </div>
         </section>
         <section v-else class="sa-panel" role="dialog" :aria-label="t('Copilot assistant')">
@@ -186,7 +180,7 @@ async function test() {
               <Close />
             </AppButton>
           </header>
-          <div class="sa-answer" aria-live="polite" :aria-busy="state.phase === 'loading'">
+          <AppScrollbar class="sa-answer" aria-live="polite" :aria-busy="state.phase === 'loading'">
             <h3>{{ title }}</h3>
             <div
               v-if="state.phase === 'loading'"
@@ -234,7 +228,7 @@ async function test() {
               <AppButton v-if="state.result?.targetId" class="sa-locate" @click="locate">
                 {{ t('Show me') }}<TopRight /></AppButton
             ></template>
-          </div>
+          </AppScrollbar>
           <div class="sa-actions">
             <AppButton
               class="sa-icon sa-regenerate"
