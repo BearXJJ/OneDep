@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppButton from '@/components/ui/AppButton.vue'
+import { AppButton, AppScrollbar, ElProgress, ElTooltip } from '@/components/ui'
 import { t, locale, translations } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import AppFileUpload from './ui/AppFileUpload.vue'
@@ -138,10 +138,16 @@ function configure() {
     if (header && event.question.description) {
       const hint = document.createElement('span')
       hint.className = 'field-help'
-      hint.title = event.question.description
       hint.setAttribute('aria-label', event.question.description)
-      render(h(InfoFilled), hint)
-      header.append(hint)
+      render(
+        h(
+          ElTooltip,
+          { content: event.question.description, placement: 'top', showAfter: 200 },
+          { default: () => h(InfoFilled, { tabindex: 0 }) },
+        ),
+        hint,
+      )
+      header.querySelector('.sd-question__title')!.append(hint)
     }
   })
   const molecules = survey.getQuestionByName('molecules') as QuestionPanelDynamicModel
@@ -638,301 +644,315 @@ function applySuggestion(suggestion: Suggestion) {
       >
     </div>
     <div class="editor-layout">
-      <aside class="editor-sidebar" :aria-label="t('投递步骤')">
-        <AppButton class="requirements-button" @click="select('requirements')">
-          {{ t('List requirements') }}
-        </AppButton>
-        <div class="completion-bars">
-          <label
-            >{{ t('All items') }}<small>{{ statistics.complete }} / {{ statistics.total }}</small
-            ><progress :value="statistics.allPercent" max="100" /></label
-          ><label
-            >{{ t('Mandatory items')
-            }}<small>{{ statistics.requiredComplete }} / {{ statistics.required }}</small
-            ><progress :value="statistics.mandatoryPercent" max="100"
-          /></label>
-        </div>
-        <h2 class="section-heading">{{ t('Navigation') }}</h2>
-        <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
-        <AppButton class="logout-button" :disabled="busy" @click="logout">{{
-          t('Log out')
-        }}</AppButton>
-      </aside>
-      <main
-        id="deposition-content"
-        ref="content"
-        class="editor-content"
-        :data-page="tab"
-        :data-revision="version"
-        :aria-busy="busy"
-        @input="notice = ''"
-      >
-        <h1 class="section-heading">{{ pageTitle }}</h1>
-        <section v-if="tab === 'welcome'" class="instructions">
-          <h2>{{ t('Welcome to OneDep') }}</h2>
-          <p>
-            {{
-              t(
-                'Upload coordinates and experimental files, review extracted information, then complete each section in the navigation tree.',
-              )
-            }}
-          </p>
-          <ol>
-            <li>
-              <AppButton class="text-link" @click="select('uploads')">
-                {{ t('Upload / replace files') }}
-              </AppButton>
-            </li>
-            <li>
-              <AppButton class="text-link" @click="select('summary')">
-                {{ t('Review the upload summary') }}
-              </AppButton>
-            </li>
-            <li>
-              <AppButton class="text-link" @click="select('contact')">
-                {{ t('Complete administrative and experimental information') }}
-              </AppButton>
-            </li>
-            <li>
-              <AppButton class="text-link" @click="select('view')">
-                {{ t('Review validation results') }}
-              </AppButton>
-            </li>
-            <li>
-              <AppButton class="text-link" @click="select('depsummary')">
-                {{ t('Review terms and submit') }}
-              </AppButton>
-            </li>
-          </ol>
-        </section>
-        <section v-else-if="tab === 'requirements'">
-          <p>{{ statistics.missing.length }}{{ t('mandatory items to complete') }}</p>
-          <ul class="requirements-list">
-            <li v-for="(item, i) in statistics.missing" :key="i">
-              <AppButton class="text-link" @click="jump(item)"
-                >{{ item.title }} <ArrowRight
-              /></AppButton>
-            </li>
-          </ul>
-        </section>
-        <section v-else-if="tab === 'uploads'" class="files">
-          <article v-for="rule in definition.files" :key="rule.role" class="file-group">
-            <h2>{{ t(rule.title) }}</h2>
-            <div v-for="slot in rule.max" :key="slot" class="file-slot">
-              <span v-if="rule.max > 1">{{ slot }}</span>
-              <template v-if="fileOf(rule.role, slot)">
-                <a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
-                  fileOf(rule.role, slot)!.originalName
-                }}</a>
-                <span
-                  >{{ t('v') }}{{ fileOf(rule.role, slot)!.revision }} ·
-                  {{ stateLabel(fileOf(rule.role, slot)!.parseState) }}</span
-                >
-                <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
-                  {{ fileOf(rule.role, slot)!.parseError }}
-                </p>
-                <AppButton
-                  :disabled="busy || !editable"
-                  @click="remove(fileOf(rule.role, slot)!.id)"
-                >
-                  <Delete />{{ t('Remove') }}
-                </AppButton>
-              </template>
-              <span v-else>{{ t('Awaiting upload') }}</span>
-              <AppFileUpload
-                v-if="editable"
-                :label="`${t(rule.title)} ${t('Slot')} ${slot}`"
-                :accept="rule.extensions.join(',')"
-                :disabled="busy"
-                :replace="!!fileOf(rule.role, slot)"
-                :prepare="() => prepareUpload(rule.role, slot)"
-                @busy="busy = $event"
-                @uploaded="completeUpload"
-              />
-            </div>
-          </article>
-        </section>
-        <section v-else-if="tab === 'summary'">
-          <p>{{ t('Review the information extracted from the uploaded files.') }}</p>
-          <details v-for="file in current.files" :key="file.id" open class="summary-block">
-            <summary>{{ file.originalName }} · {{ stateLabel(file.parseState) }}</summary>
-            <table>
-              <tbody>
-                <tr>
-                  <th>{{ t('Version / size') }}</th>
-                  <td>
-                    {{ file.revision }} / {{ (file.size / 1024 / 1024).toFixed(2) }}{{ t('MB') }}
-                  </td>
-                </tr>
-                <tr
-                  v-for="(value, key) in Object.fromEntries(
-                    Object.entries(file.facts as Record<string, unknown>).filter(
-                      ([key]) => !['metadata', 'entities'].includes(key),
-                    ),
-                  )"
-                  :key="key"
-                >
-                  <th>{{ t(String(key)) }}</th>
-                  <td>{{ value }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <p v-for="conflict in file.conflicts" :key="conflict" class="missing">{{ conflict }}</p>
-          </details>
-          <section v-if="current.answers.molecules" class="summary-block">
-            <h2>{{ t('Molecule') }}</h2>
-            <table class="entity-summary">
-              <thead>
-                <tr>
-                  <th>{{ t('Entity type') }}</th>
-                  <th>{{ t('Description') }}</th>
-                  <th>{{ t('Number') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="molecule in current.answers.molecules as AnswerRecord[]"
-                  :key="molecule.recordId"
-                >
-                  <td>{{ t(String(molecule.entityType)) }}</td>
-                  <td>{{ molecule.name }}</td>
-                  <td>
-                    {{
-                      molecule.instanceCount === undefined
-                        ? t('Not extracted')
-                        : molecule.instanceCount
-                    }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
-          <AppButton v-if="!current.files.length" @click="select('uploads')">
-            {{ t('Upload files') }}
+      <AppScrollbar class="editor-sidebar-scroll">
+        <aside class="editor-sidebar" :aria-label="t('投递步骤')">
+          <AppButton class="requirements-button" @click="select('requirements')">
+            {{ t('List requirements') }}
           </AppButton>
-        </section>
-        <section v-else-if="tab === 'message'">
-          <CommunicationPanel :deposition-id="current.id" />
-          <details v-if="messages.length">
-            <summary>{{ t('Saved draft notes') }}</summary>
-            <article v-for="message in messages" :key="String(message.recordId)">
-              <h3>{{ message.subject }}</h3>
-              <p>{{ message.body }}</p>
-            </article>
-          </details>
-        </section>
-        <section v-else-if="tab === 'view'">
-          <div class="validation-actions">
-            <AppButton :disabled="busy || !editable" @click="check">{{
-              t('Run validation')
-            }}</AppButton
-            ><span v-if="dirty">{{ t('Unsaved changes') }}</span>
+          <div class="completion-bars">
+            <label
+              >{{ t('All items') }}<small>{{ statistics.complete }} / {{ statistics.total }}</small
+              ><ElProgress
+                :percentage="statistics.allPercent"
+                :show-text="false"
+                :stroke-width="8" /></label
+            ><label
+              >{{ t('Mandatory items')
+              }}<small>{{ statistics.requiredComplete }} / {{ statistics.required }}</small
+              ><ElProgress
+                :percentage="statistics.mandatoryPercent"
+                :show-text="false"
+                :stroke-width="8"
+            /></label>
           </div>
-          <p v-if="!current.checks.length">{{ t('No validation report') }}</p>
-          <details v-for="run in current.checks" :key="run.id" open class="summary-block">
-            <summary>
-              {{ t(run.checkId) }} · {{ stateLabel(run.state) }}{{ t('· v')
-              }}{{ run.inputRevision }}
-            </summary>
-            <p v-if="run.error" class="error">{{ run.error }}</p>
-            <p v-if="run.state === 'succeeded' && !run.issues.length">{{ t('No issues found') }}</p>
-            <ul>
-              <li
-                v-for="(issue, i) in run.issues"
-                :key="i"
-                :class="issue.severity === 'error' ? 'error' : 'missing'"
-              >
-                {{ issue.message }}
+          <h2 class="section-heading">{{ t('Navigation') }}</h2>
+          <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
+          <AppButton class="logout-button" :disabled="busy" @click="logout">{{
+            t('Log out')
+          }}</AppButton>
+        </aside>
+      </AppScrollbar>
+      <AppScrollbar class="editor-content-scroll">
+        <main
+          id="deposition-content"
+          ref="content"
+          class="editor-content"
+          :data-page="tab"
+          :data-revision="version"
+          :aria-busy="busy"
+          @input="notice = ''"
+        >
+          <h1 class="section-heading">{{ pageTitle }}</h1>
+          <section v-if="tab === 'welcome'" class="instructions">
+            <h2>{{ t('Welcome to OneDep') }}</h2>
+            <p>
+              {{
+                t(
+                  'Upload coordinates and experimental files, review extracted information, then complete each section in the navigation tree.',
+                )
+              }}
+            </p>
+            <ol>
+              <li>
+                <AppButton class="text-link" @click="select('uploads')">
+                  {{ t('Upload / replace files') }}
+                </AppButton>
+              </li>
+              <li>
+                <AppButton class="text-link" @click="select('summary')">
+                  {{ t('Review the upload summary') }}
+                </AppButton>
+              </li>
+              <li>
+                <AppButton class="text-link" @click="select('contact')">
+                  {{ t('Complete administrative and experimental information') }}
+                </AppButton>
+              </li>
+              <li>
+                <AppButton class="text-link" @click="select('view')">
+                  {{ t('Review validation results') }}
+                </AppButton>
+              </li>
+              <li>
+                <AppButton class="text-link" @click="select('depsummary')">
+                  {{ t('Review terms and submit') }}
+                </AppButton>
+              </li>
+            </ol>
+          </section>
+          <section v-else-if="tab === 'requirements'">
+            <p>{{ statistics.missing.length }}{{ t('mandatory items to complete') }}</p>
+            <ul class="requirements-list">
+              <li v-for="(item, i) in statistics.missing" :key="i">
+                <AppButton class="text-link" @click="jump(item)"
+                  >{{ item.title }} <ArrowRight
+                /></AppButton>
               </li>
             </ul>
-          </details>
-        </section>
-        <template v-else>
-          <section v-if="tab === 'ligandsummary'" class="outside-demo">
-            <h2>{{ t('Ligands identified in the coordinate file') }}</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>{{ t('Ligand') }}</th>
-                  <th>{{ t('Inspection') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="ligand in ligands" :key="ligand.recordId">
-                  <td>{{ ligand.name }}</td>
-                  <td>
-                    <AppButton :disabled="!editable" @click="inspectLigand(ligand)">
-                      {{ t('Inspect selected ligand') }}
-                    </AppButton>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <p v-if="!ligands.length">
-              {{ t('No non-polymer entities in the parsed coordinate metadata') }}
-            </p>
           </section>
-          <section v-if="tab === 'depsummary'" class="submission-summary">
-            <h2>{{ t('Deposition summary') }}</h2>
-            <table>
-              <tbody>
-                <tr>
-                  <th>{{ t('Entry') }}</th>
-                  <td>{{ current.code }}</td>
-                </tr>
-                <tr>
-                  <th>{{ t('Title') }}</th>
-                  <td>{{ model.getValue('title') }}</td>
-                </tr>
-                <tr>
-                  <th>{{ t('Files') }}</th>
-                  <td>{{ current.files.length }}</td>
-                </tr>
-                <tr>
-                  <th>{{ t('Scientific information to complete') }}</th>
-                  <td>
-                    <AppButton class="text-link" @click="select('requirements')">
-                      {{ statistics.missing.length }}{{ t('items') }}
-                    </AppButton>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <details>
-              <summary>{{ t('Deposition and release policies') }}</summary>
-              <p>
-                {{
-                  t(
-                    'Review authors, contact information, release instructions and validation results before submission.',
-                  )
-                }}
+          <section v-else-if="tab === 'uploads'" class="files">
+            <article v-for="rule in definition.files" :key="rule.role" class="file-group">
+              <h2>{{ t(rule.title) }}</h2>
+              <div v-for="slot in rule.max" :key="slot" class="file-slot">
+                <span v-if="rule.max > 1">{{ slot }}</span>
+                <template v-if="fileOf(rule.role, slot)">
+                  <a :href="depositionFileUrl(current.id, fileOf(rule.role, slot)!.id)">{{
+                    fileOf(rule.role, slot)!.originalName
+                  }}</a>
+                  <span
+                    >{{ t('v') }}{{ fileOf(rule.role, slot)!.revision }} ·
+                    {{ stateLabel(fileOf(rule.role, slot)!.parseState) }}</span
+                  >
+                  <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
+                    {{ fileOf(rule.role, slot)!.parseError }}
+                  </p>
+                  <AppButton
+                    :disabled="busy || !editable"
+                    @click="remove(fileOf(rule.role, slot)!.id)"
+                  >
+                    <Delete />{{ t('Remove') }}
+                  </AppButton>
+                </template>
+                <span v-else>{{ t('Awaiting upload') }}</span>
+                <AppFileUpload
+                  v-if="editable"
+                  :label="`${t(rule.title)} ${t('Slot')} ${slot}`"
+                  :accept="rule.extensions.join(',')"
+                  :disabled="busy"
+                  :replace="!!fileOf(rule.role, slot)"
+                  :prepare="() => prepareUpload(rule.role, slot)"
+                  @busy="busy = $event"
+                  @uploaded="completeUpload"
+                />
+              </div>
+            </article>
+          </section>
+          <section v-else-if="tab === 'summary'">
+            <p>{{ t('Review the information extracted from the uploaded files.') }}</p>
+            <details v-for="file in current.files" :key="file.id" open class="summary-block">
+              <summary>{{ file.originalName }} · {{ stateLabel(file.parseState) }}</summary>
+              <table>
+                <tbody>
+                  <tr>
+                    <th>{{ t('Version / size') }}</th>
+                    <td>
+                      {{ file.revision }} / {{ (file.size / 1024 / 1024).toFixed(2) }}{{ t('MB') }}
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="(value, key) in Object.fromEntries(
+                      Object.entries(file.facts as Record<string, unknown>).filter(
+                        ([key]) => !['metadata', 'entities'].includes(key),
+                      ),
+                    )"
+                    :key="key"
+                  >
+                    <th>{{ t(String(key)) }}</th>
+                    <td>{{ value }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-for="conflict in file.conflicts" :key="conflict" class="missing">
+                {{ conflict }}
               </p>
-              <a
-                href="https://www.wwpdb.org/deposition/policies"
-                target="_blank"
-                rel="noreferrer"
-                >{{ t('wwPDB deposition policies') }}</a
-              >
+            </details>
+            <section v-if="current.answers.molecules" class="summary-block">
+              <h2>{{ t('Molecule') }}</h2>
+              <table class="entity-summary">
+                <thead>
+                  <tr>
+                    <th>{{ t('Entity type') }}</th>
+                    <th>{{ t('Description') }}</th>
+                    <th>{{ t('Number') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="molecule in current.answers.molecules as AnswerRecord[]"
+                    :key="molecule.recordId"
+                  >
+                    <td>{{ t(String(molecule.entityType)) }}</td>
+                    <td>{{ molecule.name }}</td>
+                    <td>
+                      {{
+                        molecule.instanceCount === undefined
+                          ? t('Not extracted')
+                          : molecule.instanceCount
+                      }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+            <AppButton v-if="!current.files.length" @click="select('uploads')">
+              {{ t('Upload files') }}
+            </AppButton>
+          </section>
+          <section v-else-if="tab === 'message'">
+            <CommunicationPanel :deposition-id="current.id" />
+            <details v-if="messages.length">
+              <summary>{{ t('Saved draft notes') }}</summary>
+              <article v-for="message in messages" :key="String(message.recordId)">
+                <h3>{{ message.subject }}</h3>
+                <p>{{ message.body }}</p>
+              </article>
             </details>
           </section>
-          <SurveyComponent :model="model" />
-          <section v-if="tab === 'depsummary'" class="submission-actions">
-            <AppButton :disabled="busy || !editable || !checksReady" @click="submit">
-              {{ t('Submit deposition') }}</AppButton
-            ><AppButton v-if="editable && !checksReady" :disabled="busy" @click="check">
-              {{ t('Run validation') }}</AppButton
-            ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`">{{
-              t('Download submission')
-            }}</a>
+          <section v-else-if="tab === 'view'">
+            <div class="validation-actions">
+              <AppButton :disabled="busy || !editable" @click="check">{{
+                t('Run validation')
+              }}</AppButton
+              ><span v-if="dirty">{{ t('Unsaved changes') }}</span>
+            </div>
+            <p v-if="!current.checks.length">{{ t('No validation report') }}</p>
+            <details v-for="run in current.checks" :key="run.id" open class="summary-block">
+              <summary>
+                {{ t(run.checkId) }} · {{ stateLabel(run.state) }}{{ t('· v')
+                }}{{ run.inputRevision }}
+              </summary>
+              <p v-if="run.error" class="error">{{ run.error }}</p>
+              <p v-if="run.state === 'succeeded' && !run.issues.length">
+                {{ t('No issues found') }}
+              </p>
+              <ul>
+                <li
+                  v-for="(issue, i) in run.issues"
+                  :key="i"
+                  :class="issue.severity === 'error' ? 'error' : 'missing'"
+                >
+                  {{ issue.message }}
+                </li>
+              </ul>
+            </details>
           </section>
-        </template>
-        <div class="page-actions">
-          <AppButton :disabled="busy || !editable" @click="save">{{ t('Save') }}</AppButton
-          ><AppButton @click="nextPage"
-            >{{ t('Continue to next section') }}<ArrowRight
-          /></AppButton>
-        </div>
-      </main>
+          <template v-else>
+            <section v-if="tab === 'ligandsummary'" class="outside-demo">
+              <h2>{{ t('Ligands identified in the coordinate file') }}</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{{ t('Ligand') }}</th>
+                    <th>{{ t('Inspection') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="ligand in ligands" :key="ligand.recordId">
+                    <td>{{ ligand.name }}</td>
+                    <td>
+                      <AppButton :disabled="!editable" @click="inspectLigand(ligand)">
+                        {{ t('Inspect selected ligand') }}
+                      </AppButton>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-if="!ligands.length">
+                {{ t('No non-polymer entities in the parsed coordinate metadata') }}
+              </p>
+            </section>
+            <section v-if="tab === 'depsummary'" class="submission-summary">
+              <h2>{{ t('Deposition summary') }}</h2>
+              <table>
+                <tbody>
+                  <tr>
+                    <th>{{ t('Entry') }}</th>
+                    <td>{{ current.code }}</td>
+                  </tr>
+                  <tr>
+                    <th>{{ t('Title') }}</th>
+                    <td>{{ model.getValue('title') }}</td>
+                  </tr>
+                  <tr>
+                    <th>{{ t('Files') }}</th>
+                    <td>{{ current.files.length }}</td>
+                  </tr>
+                  <tr>
+                    <th>{{ t('Scientific information to complete') }}</th>
+                    <td>
+                      <AppButton class="text-link" @click="select('requirements')">
+                        {{ statistics.missing.length }}{{ t('items') }}
+                      </AppButton>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <details>
+                <summary>{{ t('Deposition and release policies') }}</summary>
+                <p>
+                  {{
+                    t(
+                      'Review authors, contact information, release instructions and validation results before submission.',
+                    )
+                  }}
+                </p>
+                <a
+                  href="https://www.wwpdb.org/deposition/policies"
+                  target="_blank"
+                  rel="noreferrer"
+                  >{{ t('wwPDB deposition policies') }}</a
+                >
+              </details>
+            </section>
+            <SurveyComponent :model="model" />
+            <section v-if="tab === 'depsummary'" class="submission-actions">
+              <AppButton :disabled="busy || !editable || !checksReady" @click="submit">
+                {{ t('Submit deposition') }}</AppButton
+              ><AppButton v-if="editable && !checksReady" :disabled="busy" @click="check">
+                {{ t('Run validation') }}</AppButton
+              ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`">{{
+                t('Download submission')
+              }}</a>
+            </section>
+          </template>
+          <div class="page-actions">
+            <AppButton :disabled="busy || !editable" @click="save">{{ t('Save') }}</AppButton
+            ><AppButton @click="nextPage"
+              >{{ t('Continue to next section') }}<ArrowRight
+            /></AppButton>
+          </div>
+        </main>
+      </AppScrollbar>
     </div>
     <Copilot
       v-if="content"

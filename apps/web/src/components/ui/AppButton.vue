@@ -11,7 +11,9 @@ defineOptions({ inheritAttrs: false })
   </ElButton>
 </template>
 <style scoped>
-.app-button :deep(> span) { gap: 4px; }
+.app-button :deep(> span) {
+  gap: 4px;
+}
 .app-button + .app-button {
   margin-left: 0;
 }
