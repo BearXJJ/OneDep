@@ -12,7 +12,7 @@
         <form @submit.prevent="submit">
           <label v-if="isRegister" class="field">
             <span>{{ t('姓名') }}</span>
-            <input
+            <ElInput
               v-model.trim="name"
               autocomplete="name"
               minlength="2"
@@ -24,7 +24,7 @@
 
           <label class="field">
             <span>{{ isRegister ? t('邮箱') : t('邮箱或账号') }}</span>
-            <input
+            <ElInput
               v-model.trim="email"
               :type="isRegister ? 'email' : 'text'"
               :autocomplete="isRegister ? 'email' : 'username'"
@@ -36,7 +36,7 @@
 
           <label class="field">
             <span>{{ t('密码') }}</span>
-            <input
+            <ElInput
               v-model="password"
               type="password"
               :autocomplete="isRegister ? 'new-password' : 'current-password'"
@@ -49,14 +49,10 @@
 
           <fieldset v-if="isRegister" class="role-field">
             <legend>{{ t('注册身份') }}</legend>
-            <label :class="{ selected: role === 'SUBMITTER' }">
-              <input v-model="role" type="radio" value="SUBMITTER" />
-              <span>{{ t('提交员') }}</span>
-            </label>
-            <label :class="{ selected: role === 'REVIEWER' }">
-              <input v-model="role" type="radio" value="REVIEWER" />
-              <span>{{ t('审校员') }}</span>
-            </label>
+            <ElRadioGroup v-model="role">
+              <ElRadio value="SUBMITTER">{{ t('提交员') }}</ElRadio>
+              <ElRadio value="REVIEWER">{{ t('审校员') }}</ElRadio>
+            </ElRadioGroup>
           </fieldset>
 
           <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -77,6 +73,8 @@
 </template>
 
 <script setup lang="ts">
+import { ElInput } from '@/components/ui'
+import { ElRadio, ElRadioGroup } from '@/components/ui'
 import AppButton from '@/components/ui/AppButton.vue'
 import LanguageSwitch from '@/components/LanguageSwitch.vue'
 import { t } from '@/locales'
@@ -177,30 +175,6 @@ async function submit() {
           color: #3d4841;
           font-size: 13px;
           font-weight: 560;
-
-          input {
-            width: 100%;
-            height: 44px;
-            padding: 0 8px;
-            border: 1px solid #d9dfda;
-            border-radius: 8px;
-            outline: none;
-            color: #202a24;
-            background: #fff;
-            font-size: 14px;
-            transition:
-              border-color 0.16s ease,
-              box-shadow 0.16s ease;
-
-            &::placeholder {
-              color: #a8b0aa;
-            }
-
-            &:focus {
-              border-color: #4e725f;
-              box-shadow: 0 0 0 3px rgb(36 81 62 / 9%);
-            }
-          }
         }
 
         .role-field {
@@ -216,30 +190,6 @@ async function submit() {
             color: #3d4841;
             font-size: 13px;
             font-weight: 560;
-          }
-
-          label {
-            display: flex;
-            min-height: 44px;
-            align-items: center;
-            gap: 6px;
-            padding: 0 8px;
-            border: 1px solid #d9dfda;
-            border-radius: 8px;
-            color: #536057;
-            font-size: 14px;
-            cursor: pointer;
-
-            &.selected {
-              border-color: #4e725f;
-              color: #234d3a;
-              background: #f1f5f2;
-            }
-
-            input {
-              margin: 0;
-              accent-color: #24513e;
-            }
           }
         }
 

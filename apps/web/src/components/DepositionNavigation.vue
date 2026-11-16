@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ElTree } from 'element-plus'
-import 'element-plus/es/components/tree/style/css'
+import { ElTree } from '@/components/ui'
 import { FolderOpened, Folder, Check, WarningFilled, CaretRight } from '@element-plus/icons-vue'
 import type { DepositionNavItem } from '@/data/deposition-navigation'
 defineProps<{ items: DepositionNavItem[]; current: string }>()

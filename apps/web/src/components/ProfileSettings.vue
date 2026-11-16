@@ -9,7 +9,7 @@
         <div class="field-grid">
           <label class="field" for="profile-name">
             <span>{{ t('姓名') }}</span>
-            <input
+            <ElInput
               id="profile-name"
               v-model.trim="name"
               type="text"
@@ -20,7 +20,7 @@
 
           <label class="field" for="profile-email">
             <span>{{ t('登录邮箱') }}</span>
-            <input
+            <ElInput
               id="profile-email"
               v-model.trim="email"
               type="email"
@@ -31,7 +31,7 @@
 
           <label class="field" for="profile-orcid">
             <span>{{ t('ORCID') }}</span>
-            <input
+            <ElInput
               id="profile-orcid"
               v-model.trim="orcid"
               type="text"
@@ -43,7 +43,7 @@
 
           <label class="field" for="profile-institution">
             <span>{{ t('机构') }}</span>
-            <input
+            <ElInput
               id="profile-institution"
               v-model.trim="institution"
               type="text"
@@ -54,7 +54,7 @@
 
           <label class="field" for="profile-country">
             <span>{{ t('国家或地区') }}</span>
-            <input
+            <ElInput
               id="profile-country"
               v-model.trim="country"
               type="text"
@@ -65,7 +65,7 @@
 
           <label class="field" for="profile-role">
             <span>{{ t('账号角色') }}</span>
-            <input id="profile-role" :value="roleLabel" type="text" disabled />
+            <ElInput id="profile-role" :model-value="roleLabel" type="text" disabled />
           </label>
         </div>
 
@@ -97,7 +97,7 @@
         <div class="field-grid password-grid">
           <label class="field" for="current-password">
             <span>{{ t('当前密码') }}</span>
-            <input
+            <ElInput
               id="current-password"
               v-model="currentPassword"
               type="password"
@@ -108,7 +108,7 @@
 
           <label class="field" for="new-password">
             <span>{{ t('新密码') }}</span>
-            <input
+            <ElInput
               id="new-password"
               v-model="newPassword"
               type="password"
@@ -120,7 +120,7 @@
 
           <label class="field" for="confirm-password">
             <span>{{ t('确认新密码') }}</span>
-            <input
+            <ElInput
               id="confirm-password"
               v-model="confirmPassword"
               type="password"
@@ -155,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import { ElInput } from '@/components/ui'
 import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { computed, ref, watch } from 'vue'

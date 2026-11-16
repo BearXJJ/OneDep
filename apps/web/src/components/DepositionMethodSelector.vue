@@ -96,7 +96,7 @@
       <section v-if="effectiveMapStatus === 'PREVIOUS'" class="question-block compact">
         <label class="text-field">
           <span>{{ t('关联 EMDB 编号') }}</span>
-          <input v-model.trim="relatedEmdb" type="text" :placeholder="t('EMD-1234')" />
+          <ElInput v-model.trim="relatedEmdb" type="text" :placeholder="t('EMD-1234')" />
         </label>
       </section>
 
@@ -150,7 +150,7 @@
       >
         <label class="text-field">
           <span>{{ t('关联 BMRB 编号') }}</span>
-          <input
+          <ElInput
             v-model.trim="relatedBmrb"
             type="text"
             inputmode="numeric"
@@ -180,6 +180,7 @@
 </template>
 
 <script setup lang="ts">
+import { ElInput } from '@/components/ui'
 import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { computed, ref } from 'vue'

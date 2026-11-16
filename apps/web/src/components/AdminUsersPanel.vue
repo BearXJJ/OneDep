@@ -72,7 +72,7 @@
       <form class="user-editor" @submit.prevent="saveUser">
         <div class="form-field">
           <label for="user-name">{{ t('姓名') }}</label>
-          <input
+          <ElInput
             id="user-name"
             v-model.trim="formName"
             minlength="2"
@@ -86,7 +86,7 @@
 
         <div class="form-field">
           <label for="user-email">{{ t('邮箱') }}</label>
-          <input
+          <ElInput
             id="user-email"
             v-model.trim="formEmail"
             type="email"
@@ -100,7 +100,7 @@
 
         <div v-if="drawerMode === 'create'" class="form-field">
           <label for="new-user-password">{{ t('初始密码') }}</label>
-          <input
+          <ElInput
             id="new-user-password"
             v-model="formPassword"
             type="password"
@@ -178,18 +178,15 @@
 </template>
 
 <script setup lang="ts">
+import { ElInput } from '@/components/ui'
 import AppButton from '@/components/ui/AppButton.vue'
 import { t, localeTag } from '@/locales'
 import { httpError } from '@/data/http-error'
 import { computed, onMounted, ref } from 'vue'
-import { ElDialog } from 'element-plus/es/components/dialog/index'
-import { ElDrawer } from 'element-plus/es/components/drawer/index'
-import { ElOption, ElSelect } from 'element-plus/es/components/select/index'
+import { ElDialog } from '@/components/ui'
+import { ElDrawer } from '@/components/ui'
+import { ElOption, ElSelect } from '@/components/ui'
 import type { AdminUser, RegistrationRole, UserRole } from '@onedep/shared'
-
-import 'element-plus/es/components/dialog/style/css'
-import 'element-plus/es/components/drawer/style/css'
-import 'element-plus/es/components/select/style/css'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   SUBMITTER: '提交员',

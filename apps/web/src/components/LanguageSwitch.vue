@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import { locale, setLocale, type Locale } from '@/locales'
-function change(event: Event) {
-  setLocale((event.target as HTMLSelectElement).value as Locale)
-}
+import { ElSelect, ElOption } from '@/components/ui'
+import { locale, setLocale } from '@/locales'
 </script>
 <template>
-  <select class="language-switch" aria-label="界面语言 / Language" :value="locale" @change="change">
-    <option value="zh">中文</option>
-    <option value="en">English</option>
-  </select>
+  <ElSelect
+    class="language-switch"
+    aria-label="界面语言 / Language"
+    :model-value="locale"
+    @change="setLocale"
+  >
+    <ElOption label="中文" value="zh" />
+    <ElOption label="English" value="en" />
+  </ElSelect>
 </template>
 <style scoped>
 .language-switch {
-  font: inherit;
-  border: 1px solid #b7c3b9;
-  border-radius: 3px;
-  background: #fff;
-  color: #164c68;
-  padding: 3px 6px;
+  width: 100px;
   flex-shrink: 0;
 }
 </style>

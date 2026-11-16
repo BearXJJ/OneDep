@@ -1,8 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-import { ElMessage } from 'element-plus/es/components/message/index'
-import 'element-plus/es/components/message/style/css'
+import { ElMessage } from '@/components/ui'
 import App from './App.vue'
 import router from './router'
 import './assets/styles/global.less'

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ElInput } from '@/components/ui'
 import AppButton from '@/components/ui/AppButton.vue'
 import { t, localeTag } from '@/locales'
 import { ref, onMounted } from 'vue'
@@ -45,8 +46,8 @@ onMounted(refresh)
     </article>
     <p v-if="!messages.length">{{ t('No messages.') }}</p>
     <form @submit.prevent="send">
-      <label>{{ t('Subject') }}<input v-model="subject" required /></label
-      ><label>{{ t('Message') }}<textarea v-model="body" required rows="5" /></label
+      <label>{{ t('Subject') }}<ElInput v-model="subject" required /></label
+      ><label>{{ t('Message') }}<ElInput type="textarea" v-model="body" required :rows="5" /></label
       ><AppButton native-type="submit" :disabled="pending || !subject.trim() || !body.trim()">
         {{ t('Send message') }}
       </AppButton>
