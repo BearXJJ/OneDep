@@ -54,6 +54,13 @@ const sourceChoices: Record<
     labelField: "equipment",
   },
 };
+// Required repeatable sections confirmed in the deposition feedback.
+export const requiredRecordCollections = new Set([
+  "contact__pdbx_contact_author",
+  "contact__pdbx_contact_author_1",
+  "funding__pdbx_audit_support",
+  "funding__pdbx_SG_project",
+]);
 const quote = (value: string) => JSON.stringify(value);
 export function getProfileDefinition(id: DepositionProfile): ProfileDefinition {
   const demo = getDemoDefinition(id),
@@ -202,6 +209,10 @@ export function getProfileDefinition(id: DepositionProfile): ProfileDefinition {
               }
             : c,
         );
+      if (f.name === "email" && question.type === "text") {
+        question.inputType = "email";
+        question.validators = [{ type: "email" }];
+      }
       if (!scope) rootFields.set(name, question);
       return question;
     }
@@ -264,7 +275,7 @@ export function getProfileDefinition(id: DepositionProfile): ProfileDefinition {
             name: nextScope!,
             title: e.title,
             keyName: "recordId",
-            minPanelCount: 0,
+            minPanelCount: requiredRecordCollections.has(nextScope!) ? 1 : 0,
             allowAddPanel: true,
             allowRemovePanel: true,
             visibleIf,

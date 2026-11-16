@@ -29,6 +29,7 @@ export interface FieldMeta {
   normalizerId?: string;
 }
 export type Validator =
+  | { type: "email" }
   | { type: "regex"; regex: string; text: string }
   | { type: "numeric"; minValue?: number; maxValue?: number; text: string }
   | { type: "expression"; expression: Expr; text: string }

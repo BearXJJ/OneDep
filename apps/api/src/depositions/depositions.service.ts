@@ -18,6 +18,7 @@ import {
   getCifBindings,
   getProfileDefinition,
   parseQuestionnaireDraft,
+  requiredRecordCollections,
   userOrigins,
   validateFileManifest,
   validateQuestionnaire,
@@ -524,7 +525,9 @@ export class DepositionsService {
     ).map((i) => ({
       code: i.code,
       severity:
-        i.path.includes('termsAccepted') || i.code !== 'required'
+        i.path.includes('termsAccepted') ||
+        requiredRecordCollections.has(String(i.path[1])) ||
+        i.code !== 'required'
           ? 'error'
           : 'warning',
       message: `${i.path.join('.')}: ${i.message}`,
