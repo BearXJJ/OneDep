@@ -13,7 +13,7 @@
   },
   "'YES' indicates that the specimen has been shadowed.": {
     "en": "'YES' indicates that the specimen has been shadowed.",
-    "zh": "'YES'表示标本已被投影。"
+    "zh": "选择 YES 表示样品已经过投影镀膜。"
   },
   "'YES' indicates that the specimen has been stained.": {
     "en": "'YES' indicates that the specimen has been stained.",
@@ -573,7 +573,7 @@
   },
   "Additional citations": {
     "en": "Additional citations",
-    "zh": "附加引用文献"
+    "zh": "其他参考文献"
   },
   "Additional detail such as description of filters used, if selection was manual or automated, and/or template details.": {
     "en": "Additional detail such as description of filters used, if selection was manual or automated, and/or template details.",
@@ -581,7 +581,7 @@
   },
   "Additional details about specimen shadowing": {
     "en": "Additional details about specimen shadowing",
-    "zh": "关于样品投影的附加细节"
+    "zh": "样品投影镀膜的补充说明。"
   },
   "Additional details about the buffer.": {
     "en": "Additional details about the buffer.",
@@ -685,7 +685,7 @@
   },
   "Alignment procedure": {
     "en": "Alignment procedure",
-    "zh": "对齐流程"
+    "zh": "电子束对中方法"
   },
   "All items": {
     "en": "All items",
@@ -885,15 +885,15 @@
   },
   "Assembly Definition and Evidence": {
     "en": "Assembly Definition and Evidence",
-    "zh": "装配定义与证据"
+    "zh": "组装体定义与依据"
   },
   "Assembly Review": {
     "en": "Assembly Review",
-    "zh": "装配审查"
+    "zh": "组装体确认"
   },
   "Assembly details*: e.g., homodimer, icosahedral, 1:1 protein:DNA duplex": {
     "en": "Assembly details*: e.g., homodimer, icosahedral, 1:1 protein:DNA duplex",
-    "zh": "装配详情*：例如，同源二聚体、二十面体、1:1 蛋白质:DNA 双链"
+    "zh": "组装体说明：例如同源二聚体、二十面体、1:1 蛋白质与 DNA 双链复合物"
   },
   "Assembly, Dynamics and Evolution of Cell-Cell and Cell-Matrix Adhesions": {
     "en": "Assembly, Dynamics and Evolution of Cell-Cell and Cell-Matrix Adhesions",
@@ -901,7 +901,7 @@
   },
   "Atmosphere": {
     "en": "Atmosphere",
-    "zh": "大气层"
+    "zh": "气氛"
   },
   "Atoms-to-Animals: The Immune Function Network": {
     "en": "Atoms-to-Animals: The Immune Function Network",
@@ -989,7 +989,7 @@
   },
   "Average electron dose per image (e-/Â2)": {
     "en": "Average electron dose per image (e-/Â2)",
-    "zh": "每张图像的平均电子剂量 (e-/Å2)"
+    "zh": "每张图像的平均电子剂量（e⁻/Å²）"
   },
   "Average exposure time per image (seconds)": {
     "en": "Average exposure time per image (seconds)",
@@ -1325,11 +1325,11 @@
   },
   "Bin free R value test set count": {
     "en": "Bin free R value test set count",
-    "zh": "自由R值测试集数量统计"
+    "zh": "该分辨率分箱的自由 R 值测试集反射数"
   },
   "Bin free R value test set size (%)": {
     "en": "Bin free R value test set size (%)",
-    "zh": "自由R值测试集大小(%)"
+    "zh": "该分辨率分箱的自由 R 值测试集占比（%）"
   },
   "Bin resolution range high (Å)": {
     "en": "Bin resolution range high (Å)",
@@ -1865,11 +1865,11 @@
   },
   "Calibrated maximum defocus (nm)": {
     "en": "Calibrated maximum defocus (nm)",
-    "zh": "校准最大离焦 (nm)"
+    "zh": "校准后最大离焦量（nm）"
   },
   "Calibrated minimum defocus (nm)": {
     "en": "Calibrated minimum defocus (nm)",
-    "zh": "校准最小离焦 (nm)"
+    "zh": "校准后最小离焦量（nm）"
   },
   "Cambodia": {
     "en": "Cambodia",
@@ -1881,7 +1881,7 @@
   },
   "Can you generate the assembly without applying matrices?": {
     "en": "Can you generate the assembly without applying matrices?",
-    "zh": "是否可以在不应用矩阵的情况下生成装配体？"
+    "zh": "是否无需应用变换矩阵即可生成组装体？"
   },
   "Canada": {
     "en": "Canada",
@@ -2029,7 +2029,7 @@
   },
   "Chains and matrices for the assembly": {
     "en": "Chains and matrices for the assembly",
-    "zh": "装配体的链和矩阵"
+    "zh": "组装体的链与变换矩阵"
   },
   "Chamber humidity (%)": {
     "en": "Chamber humidity (%)",
@@ -2049,7 +2049,7 @@
   },
   "Check this box to accept your assemblies": {
     "en": "Check this box to accept your assemblies",
-    "zh": "勾选此框以接受您的装配体"
+    "zh": "是否确认这些组装体？"
   },
   "Cheetah": {
     "en": "Cheetah",
@@ -2137,7 +2137,7 @@
   },
   "Citation information": {
     "en": "Citation information",
-    "zh": "引文信息"
+    "zh": "参考文献信息"
   },
   "Clas Groschinsky Memorial Fund": {
     "en": "Clas Groschinsky Memorial Fund",
@@ -2149,7 +2149,7 @@
   },
   "Click Y to show section": {
     "en": "Click Y to show section",
-    "zh": "点击Y显示剖面"
+    "zh": "选择 Y 后填写此部分"
   },
   "Close assistant": {
     "en": "Close assistant",
@@ -2225,15 +2225,15 @@
   },
   "Completeness (working+test) (%)": {
     "en": "Completeness (working+test) (%)",
-    "zh": "完整性（工作+测试）（%）"
+    "zh": "数据完整度（工作集与测试集，%）"
   },
   "Completeness for range (%)": {
     "en": "Completeness for range (%)",
-    "zh": "范围完整性（%）"
+    "zh": "该分辨率范围的数据完整度（%）"
   },
   "Completeness for shell (%)": {
     "en": "Completeness for shell (%)",
-    "zh": "壳层完整性（%）"
+    "zh": "该分辨率壳层的数据完整度（%）"
   },
   "Comunidad de Madrid": {
     "en": "Comunidad de Madrid",
@@ -2321,7 +2321,7 @@
   },
   "Correction type": {
     "en": "Correction type",
-    "zh": "更正类型"
+    "zh": "校正类型"
   },
   "Costa Rica": {
     "en": "Costa Rica",
@@ -2337,11 +2337,11 @@
   },
   "Country/Region": {
     "en": "Country/Region",
-    "zh": "国家/地区"
+    "zh": "国家或地区"
   },
   "Country/Region (from registration page)": {
     "en": "Country/Region (from registration page)",
-    "zh": "国家/地区（来自注册页面）"
+    "zh": "国家或地区（注册信息）"
   },
   "Cow": {
     "en": "Cow",
@@ -2953,15 +2953,15 @@
   },
   "Data collection": {
     "en": "Data collection",
-    "zh": "数据收集"
+    "zh": "数据采集"
   },
   "Data collection temperature (K)": {
     "en": "Data collection temperature (K)",
-    "zh": "数据收集温度 (K)"
+    "zh": "数据采集温度（K）"
   },
   "Data collection temperature details": {
     "en": "Data collection temperature details",
-    "zh": "数据收集温度详情"
+    "zh": "数据采集温度说明"
   },
   "Data cutoff (sigma(F))": {
     "en": "Data cutoff (sigma(F))",
@@ -2977,7 +2977,7 @@
   },
   "Data reduction": {
     "en": "Data reduction",
-    "zh": "数据缩减"
+    "zh": "数据归约"
   },
   "Data redundancy": {
     "en": "Data redundancy",
@@ -3005,7 +3005,7 @@
   },
   "Date of collection": {
     "en": "Date of collection",
-    "zh": "收集日期"
+    "zh": "采集日期"
   },
   "David and Lucile Packard Foundation": {
     "en": "David and Lucile Packard Foundation",
@@ -3301,11 +3301,11 @@
   },
   "E-mail": {
     "en": "E-mail",
-    "zh": "电子邮件"
+    "zh": "电子邮箱"
   },
   "E-mail (from registration page)": {
     "en": "E-mail (from registration page)",
-    "zh": "电子邮件（来自注册页面）"
+    "zh": "电子邮箱（注册信息）"
   },
   "EC number": {
     "en": "EC number",
@@ -3373,11 +3373,11 @@
   },
   "EM experiment": {
     "en": "EM experiment",
-    "zh": "EM 实验"
+    "zh": "电镜实验"
   },
   "EM sample": {
     "en": "EM sample",
-    "zh": "EM 样品"
+    "zh": "电镜样品"
   },
   "EM 或电子晶体学与 NMR 联合投递必须包含坐标": {
     "zh": "EM 或电子晶体学与 NMR 联合投递必须包含坐标",
@@ -3437,7 +3437,7 @@
   },
   "EMDB (map) entry title": {
     "en": "EMDB (map) entry title",
-    "zh": "EMDB（图）条目标题"
+    "zh": "EMDB 密度图条目标题"
   },
   "EMDB ID": {
     "en": "EMDB ID",
@@ -3457,7 +3457,7 @@
   },
   "EMDB map release status": {
     "en": "EMDB map release status",
-    "zh": "EMDB 图发布状态"
+    "zh": "EMDB 密度图发布状态"
   },
   "EMIL 10": {
     "en": "EMIL 10",
@@ -3741,7 +3741,7 @@
   },
   "End page": {
     "en": "End page",
-    "zh": "结束页"
+    "zh": "结束页码"
   },
   "Ending index in the author provided chemical sequence.": {
     "en": "Ending index in the author provided chemical sequence.",
@@ -3749,7 +3749,7 @@
   },
   "Energy filter name": {
     "en": "Energy filter name",
-    "zh": "能量过滤器名称"
+    "zh": "能量过滤器型号"
   },
   "Energy filter slit width (range) in electron volts (eV).": {
     "en": "Energy filter slit width (range) in electron volts (eV).",
@@ -3917,7 +3917,7 @@
   },
   "Experimental evidence for the assembly": {
     "en": "Experimental evidence for the assembly",
-    "zh": "组装的实验证据"
+    "zh": "支持组装体的实验证据"
   },
   "Experimentally measured?": {
     "en": "Experimentally measured?",
@@ -3925,7 +3925,7 @@
   },
   "Experiments performed to support the assembly": {
     "en": "Experiments performed to support the assembly",
-    "zh": "为支持组装而进行的实验"
+    "zh": "用于验证组装体的实验"
   },
   "Expression system": {
     "en": "Expression system",
@@ -4277,7 +4277,7 @@
   },
   "Film support": {
     "en": "Film support",
-    "zh": "胶片支持"
+    "zh": "支持膜"
   },
   "Film/CCD/Direct electron detector model": {
     "en": "Film/CCD/Direct electron detector model",
@@ -4541,7 +4541,7 @@
   },
   "Frames that failed to index": {
     "en": "Frames that failed to index",
-    "zh": "未能索引的帧"
+    "zh": "未能完成指标化的帧数"
   },
   "France": {
     "en": "France",
@@ -4557,7 +4557,7 @@
   },
   "Free R value test set count": {
     "en": "Free R value test set count",
-    "zh": "自由R值测试集计数"
+    "zh": "自由 R 值测试集反射数"
   },
   "Free R value test set selection": {
     "en": "Free R value test set selection",
@@ -4565,7 +4565,7 @@
   },
   "Free R value test set size (%)": {
     "en": "Free R value test set size (%)",
-    "zh": "自由R值测试集大小（%）"
+    "zh": "自由 R 值测试集占比（%）"
   },
   "French Alternative Energies and Atomic Energy Commission (CEA)": {
     "en": "French Alternative Energies and Atomic Energy Commission (CEA)",
@@ -4613,7 +4613,7 @@
   },
   "From page": {
     "en": "From page",
-    "zh": "自页面"
+    "zh": "起始页码"
   },
   "Function": {
     "en": "Function",
@@ -4625,11 +4625,11 @@
   },
   "Funding Organisation": {
     "en": "Funding Organisation",
-    "zh": "资助组织"
+    "zh": "资助机构"
   },
   "Funding details": {
     "en": "Funding details",
-    "zh": "资助详情"
+    "zh": "基金信息"
   },
   "Future Leader Fellowship": {
     "en": "Future Leader Fellowship",
@@ -5093,11 +5093,11 @@
   },
   "Grant Number": {
     "en": "Grant Number",
-    "zh": "资助编号"
+    "zh": "基金项目编号"
   },
   "Grant information": {
     "en": "Grant information",
-    "zh": "资助信息"
+    "zh": "基金信息"
   },
   "Greece": {
     "en": "Greece",
@@ -5121,15 +5121,15 @@
   },
   "Grid": {
     "en": "Grid",
-    "zh": "网格"
+    "zh": "载网"
   },
   "Grid mesh (lines/inch)": {
     "en": "Grid mesh (lines/inch)",
-    "zh": "网格目数（线/英寸）"
+    "zh": "载网目数（线/英寸）"
   },
   "Grid pretreatment": {
     "en": "Grid pretreatment",
-    "zh": "网格预处理"
+    "zh": "载网预处理"
   },
   "Guadeloupe": {
     "en": "Guadeloupe",
@@ -5601,7 +5601,7 @@
   },
   "Indexed frames": {
     "en": "Indexed frames",
-    "zh": "已索引帧"
+    "zh": "已完成指标化的帧数"
   },
   "India": {
     "en": "India",
@@ -6045,7 +6045,7 @@
   },
   "Jet diameter": {
     "en": "Jet diameter",
-    "zh": "喷嘴直径"
+    "zh": "射流直径"
   },
   "Joachim Herz Stiftung": {
     "en": "Joachim Herz Stiftung",
@@ -6317,7 +6317,7 @@
   },
   "Lattices indexed": {
     "en": "Lattices indexed",
-    "zh": "已建立索引的晶格"
+    "zh": "已完成指标化的晶格数"
   },
   "Latvia": {
     "en": "Latvia",
@@ -6413,7 +6413,7 @@
   },
   "List of chain IDs in this assembly": {
     "en": "List of chain IDs in this assembly",
-    "zh": "此装配体中链ID的列表"
+    "zh": "该组装体包含的链 ID"
   },
   "List people responsible for the contents of this entry. Hyphens, apostrophes and blank spaces are allowed in the last names. Special characters and character modifiers should not be used.": {
     "en": "List people responsible for the contents of this entry. Hyphens, apostrophes and blank spaces are allowed in the last names. Special characters and character modifiers should not be used.",
@@ -6993,11 +6993,11 @@
   },
   "Microscopy": {
     "en": "Microscopy",
-    "zh": "显微术"
+    "zh": "电镜成像"
   },
   "Microscopy settings": {
     "en": "Microscopy settings",
-    "zh": "显微镜设置"
+    "zh": "电镜成像设置"
   },
   "Middle initial": {
     "en": "Middle initial",
@@ -7229,7 +7229,7 @@
   },
   "Movie frames per image": {
     "en": "Movie frames per image",
-    "zh": "每幅图像的电影帧数"
+    "zh": "每张图像的原始帧数"
   },
   "Mozambique": {
     "en": "Mozambique",
@@ -7845,11 +7845,11 @@
   },
   "Nominal maximum defocus (nm)": {
     "en": "Nominal maximum defocus (nm)",
-    "zh": "标称最大散焦（nm）"
+    "zh": "标称最大离焦量（nm）"
   },
   "Nominal minimum defocus (nm)": {
     "en": "Nominal minimum defocus (nm)",
-    "zh": "标称最小散焦（nm）"
+    "zh": "标称最小离焦量（nm）"
   },
   "None of these": {
     "en": "None of these",
@@ -7901,7 +7901,7 @@
   },
   "Number of Unique reflections refined against": {
     "en": "Number of Unique reflections refined against",
-    "zh": "精修所用的独特反射数"
+    "zh": "用于精修的独立反射数"
   },
   "Number of classes": {
     "en": "Number of classes",
@@ -7913,7 +7913,7 @@
   },
   "Number of grids imaged": {
     "en": "Number of grids imaged",
-    "zh": "成像的网格数"
+    "zh": "已成像的载网数量"
   },
   "Number of grids in the microscopy session": {
     "en": "Number of grids in the microscopy session",
@@ -7957,11 +7957,11 @@
   },
   "Number of unique reflections measured": {
     "en": "Number of unique reflections measured",
-    "zh": "测得的唯一衍射点数量"
+    "zh": "测得的独立反射数"
   },
   "Number of unique reflections measured for shell": {
     "en": "Number of unique reflections measured for shell",
-    "zh": "测得的壳层唯一衍射点数量"
+    "zh": "该分辨率壳层测得的独立反射数"
   },
   "O": {
     "en": "O",
@@ -8069,7 +8069,7 @@
   },
   "Obsoleting of publicly released entries": {
     "en": "Obsoleting of publicly released entries",
-    "zh": "公开释放条目的废弃"
+    "zh": "替换已公开的条目"
   },
   "Office of Naval Research (ONR)": {
     "en": "Office of Naval Research (ONR)",
@@ -8137,7 +8137,7 @@
   },
   "Organism name": {
     "en": "Organism name",
-    "zh": "生物体名称"
+    "zh": "生物名称"
   },
   "Organized group of tissues that carries on a specialized function.": {
     "en": "Organized group of tissues that carries on a specialized function.",
@@ -8301,7 +8301,7 @@
   },
   "PDB ID(s) to be obsoleted by this entry (comma separated if more than one)": {
     "en": "PDB ID(s) to be obsoleted by this entry (comma separated if more than one)",
-    "zh": "将被本条目的废弃的 PDB ID（如果多于一个，用逗号分隔）"
+    "zh": "将由本条目替换的 PDB 编号（多个编号用逗号分隔）"
   },
   "PDB entry author name": {
     "en": "PDB entry author name",
@@ -8793,7 +8793,7 @@
   },
   "Primary citation": {
     "en": "Primary citation",
-    "zh": "主要引用"
+    "zh": "主要参考文献"
   },
   "ProDC": {
     "en": "ProDC",
@@ -9413,7 +9413,7 @@
   },
   "Range of movie frames used for the reconstruction": {
     "en": "Range of movie frames used for the reconstruction",
-    "zh": "用于重建的电影帧范围"
+    "zh": "用于重建的原始帧范围"
   },
   "Range of time-slice (movie) frames used for the reconstruction.": {
     "en": "Range of time-slice (movie) frames used for the reconstruction.",
@@ -10541,19 +10541,19 @@
   },
   "Scientific name (exp)": {
     "en": "Scientific name (exp)",
-    "zh": "科学名称（实验）"
+    "zh": "表达宿主的学名"
   },
   "Scientific name (gen)": {
     "en": "Scientific name (gen)",
-    "zh": "科学名称（属）"
+    "zh": "基因来源生物的学名"
   },
   "Scientific name (nat)": {
     "en": "Scientific name (nat)",
-    "zh": "科学名称（自然）"
+    "zh": "天然来源生物的学名"
   },
   "Scientific name (syn)": {
     "en": "Scientific name (syn)",
-    "zh": "科学名称（同义）"
+    "zh": "合成序列来源生物的学名"
   },
   "Scientific name of the organism of the natural source.": {
     "en": "Scientific name of the organism of the natural source.",
@@ -10581,11 +10581,11 @@
   },
   "Select Y to show section": {
     "en": "Select Y to show section",
-    "zh": "选择 Y 以显示该部分"
+    "zh": "选择 Y 后填写此部分"
   },
   "Select Y to show section(selecting N excludes the author(s)": {
     "en": "Select Y to show section(selecting N excludes the author(s)",
-    "zh": "选择 Y 以显示该部分（选择 N 则排除作者"
+    "zh": "是否添加其他作者？选择 Y 后填写，选择 N 则不添加。"
   },
   "Send message": {
     "en": "Send message",
@@ -10621,11 +10621,11 @@
   },
   "Serial crystallography experiment": {
     "en": "Serial crystallography experiment",
-    "zh": "连续晶体学实验"
+    "zh": "串行晶体学实验"
   },
   "Serial crystallography measurement": {
     "en": "Serial crystallography measurement",
-    "zh": "连续晶体学测量"
+    "zh": "串行晶体学测量"
   },
   "SerialEM": {
     "en": "SerialEM",
@@ -10649,15 +10649,15 @@
   },
   "Shadowing": {
     "en": "Shadowing",
-    "zh": "投影"
+    "zh": "投影镀膜"
   },
   "Shadowing details": {
     "en": "Shadowing details",
-    "zh": "投影详情"
+    "zh": "投影镀膜说明"
   },
   "Shadowing material": {
     "en": "Shadowing material",
-    "zh": "投影材料"
+    "zh": "投影镀膜材料"
   },
   "Shapiro-Silverberg Fund for the Advancement of Translational Research": {
     "en": "Shapiro-Silverberg Fund for the Advancement of Translational Research",
@@ -10785,7 +10785,7 @@
   },
   "Source distance": {
     "en": "Source distance",
-    "zh": "来源距离"
+    "zh": "光源到样品的距离"
   },
   "Source name": {
     "en": "Source name",
@@ -10793,7 +10793,7 @@
   },
   "Source size": {
     "en": "Source size",
-    "zh": "来源尺寸"
+    "zh": "光源处的束斑尺寸"
   },
   "Source type": {
     "en": "Source type",
@@ -10865,39 +10865,39 @@
   },
   "Specimen": {
     "en": "Specimen",
-    "zh": "标本"
+    "zh": "样品"
   },
   "Specimen concentration (mg/mL)": {
     "en": "Specimen concentration (mg/mL)",
-    "zh": "标本浓度（mg/mL）"
+    "zh": "样品浓度（mg/mL）"
   },
   "Specimen details": {
     "en": "Specimen details",
-    "zh": "标本详情"
+    "zh": "样品说明"
   },
   "Specimen embedded?": {
     "en": "Specimen embedded?",
-    "zh": "标本是否包埋？"
+    "zh": "样品是否经过包埋？"
   },
   "Specimen holder": {
     "en": "Specimen holder",
-    "zh": "标本夹持器"
+    "zh": "样品杆"
   },
   "Specimen preparation": {
     "en": "Specimen preparation",
-    "zh": "标本制备"
+    "zh": "样品制备"
   },
   "Specimen shadowed?": {
     "en": "Specimen shadowed?",
-    "zh": "标本是否投影？"
+    "zh": "样品是否经过投影镀膜？"
   },
   "Specimen stained?": {
     "en": "Specimen stained?",
-    "zh": "标本是否染色？"
+    "zh": "样品是否经过染色？"
   },
   "Specimen state": {
     "en": "Specimen state",
-    "zh": "标本状态"
+    "zh": "样品状态"
   },
   "Spherical aberration coefficient (Cs in mm)": {
     "en": "Spherical aberration coefficient (Cs in mm)",
@@ -10953,7 +10953,7 @@
   },
   "State/Province": {
     "en": "State/Province",
-    "zh": "州/省"
+    "zh": "州或省"
   },
   "Strain": {
     "en": "Strain",
@@ -10997,7 +10997,7 @@
   },
   "Structural genomics": {
     "en": "Structural genomics",
-    "zh": "结构基因组学"
+    "zh": "结构基因组学项目"
   },
   "Structure 2 Function Project": {
     "en": "Structure 2 Function Project",
@@ -11069,7 +11069,7 @@
   },
   "Surname/Last name": {
     "en": "Surname/Last name",
-    "zh": "姓/姓氏"
+    "zh": "姓氏"
   },
   "Svalbard And Jan Mayen": {
     "en": "Svalbard And Jan Mayen",
@@ -11381,7 +11381,7 @@
   },
   "Taxonomy ID": {
     "en": "Taxonomy ID",
-    "zh": "分类学ID"
+    "zh": "分类学编号"
   },
   "Techical University of Denmark (DTU)": {
     "en": "Techical University of Denmark (DTU)",
@@ -11641,11 +11641,11 @@
   },
   "The country/region in which the research was performed": {
     "en": "The country/region in which the research was performed",
-    "zh": "研究开展所在的国家/地区"
+    "zh": "开展本项研究的国家或地区。"
   },
   "The country/region providing the funding support for the entry.": {
     "en": "The country/region providing the funding support for the entry.",
-    "zh": "为该条目提供资助支持的国家/地区。"
+    "zh": "资助本项研究的国家或地区。"
   },
   "The criterion used to classify a reflection as 'observed' expressed as a multiple of the value of sigma(F).": {
     "en": "The criterion used to classify a reflection as 'observed' expressed as a multiple of the value of sigma(F).",
@@ -11709,7 +11709,7 @@
   },
   "The full name of Structural Genomics center": {
     "en": "The full name of Structural Genomics center",
-    "zh": "结构基因组学中心的完整名称"
+    "zh": "结构基因组学中心全称。"
   },
   "The functional form of the restraint function used in the least-squares refinement.": {
     "en": "The functional form of the restraint function used in the least-squares refinement.",
@@ -11721,7 +11721,7 @@
   },
   "The grant number associated with this source of support.": {
     "en": "The grant number associated with this source of support.",
-    "zh": "与该支持来源相关的资助编号。"
+    "zh": "该资助机构提供的基金项目编号。"
   },
   "The high resolution limit used for data processing. The high resolution limit actually used for structure solution or model refinement might be lower than this.": {
     "en": "The high resolution limit used for data processing. The high resolution limit actually used for structure solution or model refinement might be lower than this.",
@@ -11857,7 +11857,7 @@
   },
   "The name of the organization providing funding support for the entry.": {
     "en": "The name of the organization providing funding support for the entry.",
-    "zh": "为该条目提供资助支持的组织名称。"
+    "zh": "资助本项研究的机构名称。"
   },
   "The name of the plasmid that produced the entity in the host organism. Where full details of the protein production are available it would be expected that this item would be derived from _pdbx_construct.name of the construct pointed to from _entity_src_gen_express.plasmid_id.": {
     "en": "The name of the plasmid that produced the entity in the host organism. Where full details of the protein production are available it would be expected that this item would be derived from _pdbx_construct.name of the construct pointed to from _entity_src_gen_express.plasmid_id.",
@@ -12005,7 +12005,7 @@
   },
   "The reconstruction algorithm/technique used to generate the map.": {
     "en": "The reconstruction algorithm/technique used to generate the map.",
-    "zh": "用于生成图谱的重建算法/技术。"
+    "zh": "生成密度图所用的重建算法或技术。"
   },
   "The redundancy of data collected in this resolution shell": {
     "en": "The redundancy of data collected in this resolution shell",
@@ -12273,7 +12273,7 @@
   },
   "This code indicates whether the entry belongs to Structural Genomics Project.": {
     "en": "This code indicates whether the entry belongs to Structural Genomics Project.",
-    "zh": "此代码指示该条目是否属于结构基因组学项目。"
+    "zh": "本条目是否属于结构基因组学项目。"
   },
   "This code indicates whether to suppress the entry title.": {
     "en": "This code indicates whether to suppress the entry title.",
@@ -12293,7 +12293,7 @@
   },
   "This specific Structural Genomics project name": {
     "en": "This specific Structural Genomics project name",
-    "zh": "此特定结构基因组学项目名称"
+    "zh": "具体的结构基因组学项目名称。"
   },
   "Tilt angle for the 1st image set of the orthogonal tilt pairs": {
     "en": "Tilt angle for the 1st image set of the orthogonal tilt pairs",
@@ -12349,7 +12349,7 @@
   },
   "To page": {
     "en": "To page",
-    "zh": "至页码"
+    "zh": "结束页码"
   },
   "Tobacco-Related Disease Research Program (TRDRP)": {
     "en": "Tobacco-Related Disease Research Program (TRDRP)",
@@ -12393,7 +12393,7 @@
   },
   "Town/City": {
     "en": "Town/City",
-    "zh": "城镇/城市"
+    "zh": "城市"
   },
   "Transcontinental EM Initiative for Membrane Protein Structure": {
     "en": "Transcontinental EM Initiative for Membrane Protein Structure",
@@ -12413,7 +12413,7 @@
   },
   "Triangulation": {
     "en": "Triangulation",
-    "zh": "三角测量"
+    "zh": "三角剖分数 T"
   },
   "Trinidad And Tobago": {
     "en": "Trinidad And Tobago",
@@ -12453,7 +12453,7 @@
   },
   "Type of Organization": {
     "en": "Type of Organization",
-    "zh": "组织类型"
+    "zh": "机构类型"
   },
   "Type of assessment": {
     "en": "Type of assessment",
@@ -12477,7 +12477,7 @@
   },
   "Type of startup model (map density) used to initiate the reconstruction": {
     "en": "Type of startup model (map density) used to initiate the reconstruction",
-    "zh": "用于启动重建的初始模型（图密度）类型"
+    "zh": "重建使用的初始模型（密度图）类型。"
   },
   "UC4CDI": {
     "en": "UC4CDI",
@@ -12861,7 +12861,7 @@
   },
   "Volume": {
     "en": "Volume",
-    "zh": "体积"
+    "zh": "卷号"
   },
   "Vrije Universiteit Brussel": {
     "en": "Vrije Universiteit Brussel",
