@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { t, locale } from '@/locales'
+import { t, locale, translations } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import LanguageSwitch from './LanguageSwitch.vue'
 import CommunicationPanel from './CommunicationPanel.vue'
@@ -80,6 +80,19 @@ function configure() {
   localizeSurvey(survey, current.value.profile)
   survey.questionTitleLocation = 'left'
   survey.textUpdateMode = 'onBlur'
+  const authors = survey.getQuestionByName('authors') as QuestionPanelDynamicModel
+  authors.titleLocation = 'top'
+  authors.templateQuestionTitleLocation = 'top'
+  authors.removePanelButtonLocation = 'right'
+  for (const question of authors.template.questions) {
+    question.startWithNewLine = question.name !== 'orcid'
+    if (question.name === 'name') {
+      const title = translations('姓名')
+      question.locTitle.setLocaleText('default', title.en)
+      question.locTitle.setLocaleText('en', title.en)
+      question.locTitle.setLocaleText('zh-cn', title.zh)
+    }
+  }
   survey.applyTheme({
     isPanelless: true,
     cssVariables: {
