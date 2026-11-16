@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t, locale, translations } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import AppFileUpload from './ui/AppFileUpload.vue'
@@ -620,7 +621,7 @@ function applySuggestion(suggestion: Suggestion) {
           }}{{ current.revision }}</small
         >
       </div>
-      <button @click="leave"><Back />{{ t('Deposition list') }}</button
+      <AppButton @click="leave"><Back />{{ t('Deposition list') }}</AppButton
       ><img :src="'/onedep/images/wwpdb_logo.png'" :alt="t('wwPDB')" height="34" />
     </header>
     <div class="editor-toolbar">
@@ -629,18 +630,18 @@ function applySuggestion(suggestion: Suggestion) {
       ><span v-if="saving" role="status">{{ t('Saving…') }}</span>
       <span v-else-if="notice" role="status" class="notice">{{ t(notice) }}</span>
       <span v-if="saveError" role="alert" class="error">{{ saveError }}</span>
-      <button :disabled="busy || !editable" @click="save">
-        {{ t('Save') }}{{ dirty ? ' *' : '' }}</button
-      ><button :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</button>
+      <AppButton :disabled="busy || !editable" @click="save">
+        {{ t('Save') }}{{ dirty ? ' *' : '' }}</AppButton
+      ><AppButton :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</AppButton>
       <a v-if="current.submission" :href="`/api/depositions/${current.id}/export`"
         ><Download />{{ t('Download submission') }}</a
       >
     </div>
     <div class="editor-layout">
       <aside class="editor-sidebar" :aria-label="t('投递步骤')">
-        <button class="requirements-button" @click="select('requirements')">
+        <AppButton class="requirements-button" @click="select('requirements')">
           {{ t('List requirements') }}
-        </button>
+        </AppButton>
         <div class="completion-bars">
           <label
             >{{ t('All items') }}<small>{{ statistics.complete }} / {{ statistics.total }}</small
@@ -653,7 +654,9 @@ function applySuggestion(suggestion: Suggestion) {
         </div>
         <h2 class="section-heading">{{ t('Navigation') }}</h2>
         <DepositionNavigation :items="navigation" :current="selection" @select="selectItem" />
-        <button class="logout-button" :disabled="busy" @click="logout">{{ t('Log out') }}</button>
+        <AppButton class="logout-button" :disabled="busy" @click="logout">{{
+          t('Log out')
+        }}</AppButton>
       </aside>
       <main
         id="deposition-content"
@@ -676,29 +679,29 @@ function applySuggestion(suggestion: Suggestion) {
           </p>
           <ol>
             <li>
-              <button class="text-link" @click="select('uploads')">
+              <AppButton class="text-link" @click="select('uploads')">
                 {{ t('Upload / replace files') }}
-              </button>
+              </AppButton>
             </li>
             <li>
-              <button class="text-link" @click="select('summary')">
+              <AppButton class="text-link" @click="select('summary')">
                 {{ t('Review the upload summary') }}
-              </button>
+              </AppButton>
             </li>
             <li>
-              <button class="text-link" @click="select('contact')">
+              <AppButton class="text-link" @click="select('contact')">
                 {{ t('Complete administrative and experimental information') }}
-              </button>
+              </AppButton>
             </li>
             <li>
-              <button class="text-link" @click="select('view')">
+              <AppButton class="text-link" @click="select('view')">
                 {{ t('Review validation results') }}
-              </button>
+              </AppButton>
             </li>
             <li>
-              <button class="text-link" @click="select('depsummary')">
+              <AppButton class="text-link" @click="select('depsummary')">
                 {{ t('Review terms and submit') }}
-              </button>
+              </AppButton>
             </li>
           </ol>
         </section>
@@ -706,7 +709,9 @@ function applySuggestion(suggestion: Suggestion) {
           <p>{{ statistics.missing.length }}{{ t('mandatory items to complete') }}</p>
           <ul class="requirements-list">
             <li v-for="(item, i) in statistics.missing" :key="i">
-              <button class="text-link" @click="jump(item)">{{ item.title }} <ArrowRight /></button>
+              <AppButton class="text-link" @click="jump(item)"
+                >{{ item.title }} <ArrowRight
+              /></AppButton>
             </li>
           </ul>
         </section>
@@ -726,9 +731,12 @@ function applySuggestion(suggestion: Suggestion) {
                 <p v-if="fileOf(rule.role, slot)!.parseError" class="error">
                   {{ fileOf(rule.role, slot)!.parseError }}
                 </p>
-                <button :disabled="busy || !editable" @click="remove(fileOf(rule.role, slot)!.id)">
+                <AppButton
+                  :disabled="busy || !editable"
+                  @click="remove(fileOf(rule.role, slot)!.id)"
+                >
                   <Delete />{{ t('Remove') }}
-                </button>
+                </AppButton>
               </template>
               <span v-else>{{ t('Awaiting upload') }}</span>
               <AppFileUpload
@@ -799,9 +807,9 @@ function applySuggestion(suggestion: Suggestion) {
               </tbody>
             </table>
           </section>
-          <button v-if="!current.files.length" @click="select('uploads')">
+          <AppButton v-if="!current.files.length" @click="select('uploads')">
             {{ t('Upload files') }}
-          </button>
+          </AppButton>
         </section>
         <section v-else-if="tab === 'message'">
           <CommunicationPanel :deposition-id="current.id" />
@@ -815,7 +823,9 @@ function applySuggestion(suggestion: Suggestion) {
         </section>
         <section v-else-if="tab === 'view'">
           <div class="validation-actions">
-            <button :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</button
+            <AppButton :disabled="busy || !editable" @click="check">{{
+              t('Run validation')
+            }}</AppButton
             ><span v-if="dirty">{{ t('Unsaved changes') }}</span>
           </div>
           <p v-if="!current.checks.length">{{ t('No validation report') }}</p>
@@ -851,9 +861,9 @@ function applySuggestion(suggestion: Suggestion) {
                 <tr v-for="ligand in ligands" :key="ligand.recordId">
                   <td>{{ ligand.name }}</td>
                   <td>
-                    <button :disabled="!editable" @click="inspectLigand(ligand)">
+                    <AppButton :disabled="!editable" @click="inspectLigand(ligand)">
                       {{ t('Inspect selected ligand') }}
-                    </button>
+                    </AppButton>
                   </td>
                 </tr>
               </tbody>
@@ -881,9 +891,9 @@ function applySuggestion(suggestion: Suggestion) {
                 <tr>
                   <th>{{ t('Scientific information to complete') }}</th>
                   <td>
-                    <button class="text-link" @click="select('requirements')">
+                    <AppButton class="text-link" @click="select('requirements')">
                       {{ statistics.missing.length }}{{ t('items') }}
-                    </button>
+                    </AppButton>
                   </td>
                 </tr>
               </tbody>
@@ -907,18 +917,20 @@ function applySuggestion(suggestion: Suggestion) {
           </section>
           <SurveyComponent :model="model" />
           <section v-if="tab === 'depsummary'" class="submission-actions">
-            <button :disabled="busy || !editable || !checksReady" @click="submit">
-              {{ t('Submit deposition') }}</button
-            ><button v-if="editable && !checksReady" :disabled="busy" @click="check">
-              {{ t('Run validation') }}</button
+            <AppButton :disabled="busy || !editable || !checksReady" @click="submit">
+              {{ t('Submit deposition') }}</AppButton
+            ><AppButton v-if="editable && !checksReady" :disabled="busy" @click="check">
+              {{ t('Run validation') }}</AppButton
             ><a v-if="current.submission" :href="`/api/depositions/${current.id}/export`">{{
               t('Download submission')
             }}</a>
           </section>
         </template>
         <div class="page-actions">
-          <button :disabled="busy || !editable" @click="save">{{ t('Save') }}</button
-          ><button @click="nextPage">{{ t('Continue to next section') }}<ArrowRight /></button>
+          <AppButton :disabled="busy || !editable" @click="save">{{ t('Save') }}</AppButton
+          ><AppButton @click="nextPage"
+            >{{ t('Continue to next section') }}<ArrowRight
+          /></AppButton>
         </div>
       </main>
     </div>

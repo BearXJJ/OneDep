@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { ref, onMounted } from 'vue'
 import type { ReviewEntry } from '@onedep/shared'
@@ -20,18 +21,18 @@ onMounted(refresh)
 <template>
   <section class="reviewer-workspace">
     <template v-if="selected"
-      ><button @click="back">{{ t('Back to review queue') }}</button>
+      ><AppButton @click="back">{{ t('Back to review queue') }}</AppButton>
       <h2>{{ selected.code }} · {{ selected.method }}</h2>
       <CommunicationPanel :key="selected.id" :deposition-id="selected.id" /></template
     ><template v-else
       ><h2 class="section-heading">{{ t('Review communication') }}</h2>
-      <button @click="refresh">{{ t('Refresh') }}</button>
+      <AppButton @click="refresh">{{ t('Refresh') }}</AppButton>
       <p v-if="!entries.length">{{ t('No submissions or messages.') }}</p>
       <div v-for="entry in entries" :key="entry.id" class="review-entry">
-        <button @click="selected = entry">
+        <AppButton @click="selected = entry">
           {{ entry.code }} · {{ entry.method }} ·
           {{ entry.status === 'SUBMITTED' ? t('Submitted') : t('Draft') }}
-        </button>
+        </AppButton>
         <p v-for="message in entry.messages" :key="message.id">
           {{ message.subject }} — {{ message.body }}
         </p>

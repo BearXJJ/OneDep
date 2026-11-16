@@ -5,20 +5,22 @@
         <img class="brand" :src="'/onedep/images/onedep_logo.png'" :alt="t('OneDep')" />
       </div>
       <div class="topbar-main">
-        <button
+        <AppButton
           v-if="isSubmitter && submitterEditing && !isSettings"
-          type="button"
+          native-type="button"
           class="topbar-back"
           @click="returnToDepositionList"
         >
           <span aria-hidden="true">←</span>{{ t('返回投递列表') }}
-        </button>
+        </AppButton>
         <span v-else class="area-name">{{ t(areaName) }}</span>
         <div class="account-info">
           <LanguageSwitch />
           <span class="account-role">{{ roleLabel ? t(roleLabel) : '' }}</span>
           <span class="account-email" :title="auth.user?.email">{{ auth.user?.email }}</span>
-          <button type="button" :disabled="leaving" @click="logout">{{ t('退出') }}</button>
+          <AppButton native-type="button" :disabled="leaving" @click="logout">{{
+            t('退出')
+          }}</AppButton>
         </div>
       </div>
     </header>
@@ -56,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import LanguageSwitch from '@/components/LanguageSwitch.vue'
 import { t } from '@/locales'
 import { Document, Setting } from '@element-plus/icons-vue'

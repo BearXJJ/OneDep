@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t, localeTag } from '@/locales'
 import { ref, onMounted } from 'vue'
 import type { CommunicationMessage } from '@onedep/shared'
@@ -33,7 +34,7 @@ onMounted(refresh)
 </script>
 <template>
   <section class="communication-panel">
-    <button @click="refresh">{{ t('Refresh messages') }}</button>
+    <AppButton @click="refresh">{{ t('Refresh messages') }}</AppButton>
     <article v-for="message in messages" :key="message.id" class="message">
       <header>
         {{ message.subject }} ·
@@ -46,9 +47,9 @@ onMounted(refresh)
     <form @submit.prevent="send">
       <label>{{ t('Subject') }}<input v-model="subject" required /></label
       ><label>{{ t('Message') }}<textarea v-model="body" required rows="5" /></label
-      ><button :disabled="pending || !subject.trim() || !body.trim()">
+      ><AppButton native-type="submit" :disabled="pending || !subject.trim() || !body.trim()">
         {{ t('Send message') }}
-      </button>
+      </AppButton>
     </form>
   </section>
 </template>

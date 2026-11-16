@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { Setting, Close, Back, Refresh, TopRight } from '@element-plus/icons-vue'
@@ -132,7 +133,7 @@ async function test() {
         data-dock-shell
       >
         <div class="sa-intro-blob" aria-hidden="true" />
-        <button
+        <AppButton
           v-if="state.view !== 'panel' && state.view !== 'settings'"
           class="sa-launcher"
           :aria-label="t('Open Copilot')"
@@ -146,7 +147,7 @@ async function test() {
             :class="{ working: state.phase === 'loading' }"
             aria-hidden="true"
           />
-        </button>
+        </AppButton>
         <section
           v-else-if="state.view === 'settings'"
           class="sa-settings"
@@ -154,11 +155,11 @@ async function test() {
         >
           <header class="sa-head">
             <span class="sa-title">{{ t('Connection') }}</span
-            ><button class="sa-icon" :aria-label="t('Back to assistant')" @click="agent!.open()">
-              <Back /></button
-            ><button class="sa-icon" :aria-label="t('Close settings')" @click="agent!.close()">
+            ><AppButton class="sa-icon" :aria-label="t('Back to assistant')" @click="agent!.open()">
+              <Back /></AppButton
+            ><AppButton class="sa-icon" :aria-label="t('Close settings')" @click="agent!.close()">
               <Close />
-            </button>
+            </AppButton>
           </header>
           <div class="sa-answer">
             <h3>{{ t('Model connection') }}</h3>
@@ -179,11 +180,11 @@ async function test() {
         </section>
         <section v-else class="sa-panel" role="dialog" :aria-label="t('Copilot assistant')">
           <header class="sa-head sa-toolbar">
-            <button class="sa-icon" :aria-label="t('Settings')" @click="agent!.openSettings()">
-              <Setting /></button
-            ><button class="sa-icon" :aria-label="t('Close assistant')" @click="agent!.close()">
+            <AppButton class="sa-icon" :aria-label="t('Settings')" @click="agent!.openSettings()">
+              <Setting /></AppButton
+            ><AppButton class="sa-icon" :aria-label="t('Close assistant')" @click="agent!.close()">
               <Close />
-            </button>
+            </AppButton>
           </header>
           <div class="sa-answer" aria-live="polite" :aria-busy="state.phase === 'loading'">
             <h3>{{ title }}</h3>
@@ -223,26 +224,26 @@ async function test() {
                     {{ props.readSnapshot(null).evidence.find((e) => e.id === id)?.text }}
                   </p>
                 </details>
-                <button
+                <AppButton
                   class="sa-button primary"
                   @click="agent!.apply(suggestion, props.applySuggestion)"
                 >
                   {{ t('Use this value') }}
-                </button>
+                </AppButton>
               </article>
-              <button v-if="state.result?.targetId" class="sa-locate" @click="locate">
-                {{ t('Show me') }}<TopRight /></button
+              <AppButton v-if="state.result?.targetId" class="sa-locate" @click="locate">
+                {{ t('Show me') }}<TopRight /></AppButton
             ></template>
           </div>
           <div class="sa-actions">
-            <button
+            <AppButton
               class="sa-icon sa-regenerate"
               :disabled="state.phase === 'loading'"
               :aria-label="t('Regenerate suggestion')"
               @click="agent!.select('next')"
             >
               <Refresh />
-            </button>
+            </AppButton>
           </div>
         </section>
       </KyantSurface>

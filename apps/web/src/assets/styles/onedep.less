@@ -179,6 +179,11 @@
     border-top: 1px solid var(--dep-border);
   }
   .submission-row {
+    height: auto;
+    white-space: normal;
+    > span {
+      display: contents;
+    }
     width: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 80px 20px;
@@ -396,24 +401,6 @@
   * {
     box-sizing: border-box;
   }
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border: 1px solid var(--dep-border);
-    border-radius: 4px;
-    color: var(--dep-accent);
-    background: #f3f6f1;
-  }
-  button:hover {
-    background: var(--dep-selected);
-    border-color: var(--dep-success);
-  }
-  button:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
   button svg,
   a svg,
   .editor-footer svg {
@@ -488,12 +475,7 @@
   }
   .requirements-button,
   .logout-button {
-    padding: 4px 14px;
-    border: 2px solid #9ba29c;
-    border-radius: 24px;
-    background: var(--dep-progress);
-    font-size: 18px;
-    font-weight: 600;
+    height: 30px;
   }
   .requirements-button {
     display: block;

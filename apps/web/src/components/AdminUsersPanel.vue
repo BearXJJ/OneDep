@@ -5,16 +5,16 @@
         <h1 id="users-title">{{ t('用户管理') }}</h1>
         <span v-if="!loading && !loadError" class="user-count">{{ users.length }}</span>
       </div>
-      <ElButton class="create-button" type="primary" @click="openCreate">{{
+      <AppButton class="create-button" type="primary" @click="openCreate">{{
         t('新增账户')
-      }}</ElButton>
+      }}</AppButton>
     </header>
 
     <div class="list-panel">
       <div v-if="loading" class="list-state">{{ t('正在加载用户…') }}</div>
       <div v-else-if="loadError" class="list-state error-state">
         <span>{{ loadError }}</span>
-        <ElButton plain @click="loadUsers">{{ t('重新加载') }}</ElButton>
+        <AppButton plain @click="loadUsers">{{ t('重新加载') }}</AppButton>
       </div>
       <div v-else-if="users.length === 0" class="list-state">{{ t('暂无用户') }}</div>
       <div v-else class="table-wrap">
@@ -42,14 +42,14 @@
               </td>
               <td class="date-cell">{{ formatDate(user.createdAt) }}</td>
               <td class="action-column">
-                <ElButton
+                <AppButton
                   v-if="user.role !== 'ADMIN'"
                   class="edit-button"
                   link
                   :disabled="submitting"
                   data-testid="edit-user"
                   @click="openEdit(user)"
-                  >{{ t('编辑') }}</ElButton
+                  >{{ t('编辑') }}</AppButton
                 >
                 <span v-else class="locked-mark">—</span>
               </td>
@@ -123,7 +123,7 @@
         <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
 
         <div class="drawer-actions">
-          <ElButton
+          <AppButton
             v-if="drawerMode === 'edit'"
             class="delete-button"
             type="danger"
@@ -131,18 +131,18 @@
             :disabled="submitting"
             data-testid="delete-user"
             @click="deleteDialogOpen = true"
-            >{{ t('删除账户') }}</ElButton
+            >{{ t('删除账户') }}</AppButton
           >
           <span class="action-spacer" />
-          <ElButton :disabled="submitting" @click="closeDrawer">{{ t('取消') }}</ElButton>
-          <ElButton
+          <AppButton :disabled="submitting" @click="closeDrawer">{{ t('取消') }}</AppButton>
+          <AppButton
             type="primary"
             native-type="submit"
             :loading="submitting"
             :disabled="drawerMode === 'edit' && formRole === selectedUser?.role"
           >
             {{ drawerMode === 'create' ? t('创建账户') : t('保存修改') }}
-          </ElButton>
+          </AppButton>
         </div>
       </form>
     </ElDrawer>
@@ -162,15 +162,15 @@
         >{{ t('？删除后该账户将无法登录，此操作无法撤销。') }}
       </p>
       <template #footer>
-        <ElButton :disabled="submitting" @click="deleteDialogOpen = false">{{
+        <AppButton :disabled="submitting" @click="deleteDialogOpen = false">{{
           t('取消')
-        }}</ElButton>
-        <ElButton
+        }}</AppButton>
+        <AppButton
           type="danger"
           :loading="submitting"
           data-testid="confirm-delete"
           @click="removeUser"
-          >{{ t('确认删除') }}</ElButton
+          >{{ t('确认删除') }}</AppButton
         >
       </template>
     </ElDialog>
@@ -178,16 +178,15 @@
 </template>
 
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t, localeTag } from '@/locales'
 import { httpError } from '@/data/http-error'
 import { computed, onMounted, ref } from 'vue'
-import { ElButton } from 'element-plus/es/components/button/index'
 import { ElDialog } from 'element-plus/es/components/dialog/index'
 import { ElDrawer } from 'element-plus/es/components/drawer/index'
 import { ElOption, ElSelect } from 'element-plus/es/components/select/index'
 import type { AdminUser, RegistrationRole, UserRole } from '@onedep/shared'
 
-import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/dialog/style/css'
 import 'element-plus/es/components/drawer/style/css'
 import 'element-plus/es/components/select/style/css'

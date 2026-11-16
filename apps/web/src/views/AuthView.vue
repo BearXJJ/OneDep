@@ -60,9 +60,9 @@
           </fieldset>
 
           <p v-if="error" class="error" role="alert">{{ error }}</p>
-          <ElButton class="submit" type="primary" native-type="submit" :loading="submitting">
+          <AppButton class="submit" type="primary" native-type="submit" :loading="submitting">
             {{ submitting ? t('请稍候…') : isRegister ? t('注册并进入') : t('登录') }}
-          </ElButton>
+          </AppButton>
         </form>
 
         <p class="switch">
@@ -77,15 +77,13 @@
 </template>
 
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import LanguageSwitch from '@/components/LanguageSwitch.vue'
 import { t } from '@/locales'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElButton } from 'element-plus/es/components/button/index'
 import type { RegistrationRole } from '@onedep/shared'
 import { useAuthStore } from '@/stores/auth'
-
-import 'element-plus/es/components/button/style/css'
 
 const route = useRoute()
 const router = useRouter()

@@ -79,12 +79,12 @@
         </p>
 
         <div class="actions">
-          <ElButton
+          <AppButton
             type="primary"
             native-type="submit"
             :loading="savingProfile"
             :disabled="!changed"
-            >{{ t('保存个人信息') }}</ElButton
+            >{{ t('保存个人信息') }}</AppButton
           >
         </div>
       </form>
@@ -141,12 +141,12 @@
         </p>
 
         <div class="actions">
-          <ElButton
+          <AppButton
             type="primary"
             native-type="submit"
             :loading="savingPassword"
             :disabled="!passwordReady"
-            >{{ t('修改密码') }}</ElButton
+            >{{ t('修改密码') }}</AppButton
           >
         </div>
       </form>
@@ -155,12 +155,10 @@
 </template>
 
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { computed, ref, watch } from 'vue'
-import { ElButton } from 'element-plus/es/components/button/index'
 import type { UserRole } from '@onedep/shared'
-
-import 'element-plus/es/components/button/style/css'
 
 import { useAuthStore } from '@/stores/auth'
 

@@ -6,10 +6,10 @@
     </header>
 
     <div class="method-grid" :aria-label="t('实验方法')">
-      <button
+      <AppButton
         v-for="method in DEPOSITION_METHODS"
         :key="method.value"
-        type="button"
+        native-type="button"
         class="method-card"
         :class="{ selected: selectedMethods.includes(method.value) }"
         :aria-pressed="selectedMethods.includes(method.value)"
@@ -20,76 +20,76 @@
         </span>
         <strong>{{ t(method.label) }}</strong>
         <span class="method-code">{{ method.code }}</span>
-      </button>
+      </AppButton>
     </div>
 
     <div v-if="selectedMethods.length" class="configuration">
       <section v-if="hasEm" class="question-block">
         <h2>{{ t('电子显微镜类型') }}</h2>
         <div class="choice-grid">
-          <button
+          <AppButton
             v-for="option in emSubtypeOptions"
             :key="option.value"
-            type="button"
+            native-type="button"
             class="choice"
             :class="{ selected: emSubtype === option.value }"
             @click="selectEmSubtype(option.value)"
           >
             {{ t(option.label) }}
-          </button>
+          </AppButton>
         </div>
       </section>
 
       <section v-if="showCoordinateQuestion" class="question-block">
         <h2>{{ t('本次投递是否包含坐标？') }}</h2>
         <div class="choice-grid two-columns">
-          <button
-            type="button"
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: coordinates === true }"
             @click="selectCoordinates(true)"
           >
             {{ t('是') }}
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: coordinates === false }"
             @click="selectCoordinates(false)"
           >
             {{ t('否，仅提交实验数据') }}
-          </button>
+          </AppButton>
         </div>
       </section>
 
       <section v-if="showMapQuestion" class="question-block">
         <h2>{{ t('与本次投递关联的 EMDB 地图') }}</h2>
         <div class="choice-grid" :class="{ 'three-columns': hasEc }">
-          <button
-            type="button"
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: emMapStatus === 'NEW_MAP' }"
             @click="selectMapStatus('NEW_MAP')"
           >
             {{ t('提交新地图') }}
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             v-if="hasEc"
-            type="button"
+            native-type="button"
             class="choice"
             :class="{ selected: emMapStatus === 'STRUCTURE_FACTORS_ONLY' }"
             @click="selectMapStatus('STRUCTURE_FACTORS_ONLY')"
           >
             {{ t('仅提交结构因子') }}
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: emMapStatus === 'PREVIOUS' }"
             @click="selectMapStatus('PREVIOUS')"
           >
             {{ t('地图已投递') }}
-          </button>
+          </AppButton>
         </div>
       </section>
 
@@ -103,44 +103,44 @@
       <section v-if="needsCompositeQuestion" class="question-block">
         <h2>{{ t('是否为复合地图投递？') }}</h2>
         <div class="choice-grid two-columns">
-          <button
-            type="button"
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: compositeMap === true }"
             @click="selectCompositeMap(true)"
           >
             {{ t('是') }}
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: compositeMap === false }"
             @click="selectCompositeMap(false)"
           >
             {{ t('否') }}
-          </button>
+          </AppButton>
         </div>
       </section>
 
       <section v-if="showNmrDataQuestion" class="question-block">
         <h2>{{ t('NMR 实验数据是否已投递至 BMRB？') }}</h2>
         <div class="choice-grid two-columns">
-          <button
-            type="button"
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: nmrDataPreviouslyDeposited === true }"
             @click="selectPreviousNmrData(true)"
           >
             {{ t('是') }}
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            native-type="button"
             class="choice"
             :class="{ selected: nmrDataPreviouslyDeposited === false }"
             @click="selectPreviousNmrData(false)"
           >
             {{ t('否') }}
-          </button>
+          </AppButton>
         </div>
       </section>
 
@@ -168,21 +168,21 @@
     <p v-if="error" class="selector-error" role="alert">{{ t(error) }}</p>
 
     <div class="selector-actions">
-      <ElButton
+      <AppButton
         type="primary"
         :loading="submitting"
         :disabled="!selectedMethods.length"
         @click="confirmSelection"
-        >{{ t('创建投递') }}</ElButton
+        >{{ t('创建投递') }}</AppButton
       >
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import AppButton from '@/components/ui/AppButton.vue'
 import { t } from '@/locales'
 import { computed, ref } from 'vue'
-import { ElButton } from 'element-plus/es/components/button/index'
 import type {
   AccessionCode,
   DepositionCreationOptions,
@@ -190,8 +190,6 @@ import type {
   EmMapStatus,
   EmSubtype,
 } from '@onedep/shared'
-
-import 'element-plus/es/components/button/style/css'
 
 import { DEPOSITION_METHODS } from '@/data/depositionMethods'
 
