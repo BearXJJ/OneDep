@@ -18,7 +18,7 @@ const emit = defineEmits<{ select: [item: DepositionNavItem] }>()
     @node-click="(item: DepositionNavItem) => (item.children ? undefined : emit('select', item))"
   >
     <template #default="{ node, data }">
-      <span class="tree-item" :class="{ 'outside-demo': data.extra }" :title="data.title">
+      <span class="tree-item" :title="data.title">
         <component
           :is="
             node.isLeaf

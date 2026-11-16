@@ -132,8 +132,6 @@ function configure() {
       question: event.question,
       element: event.htmlElement,
     })
-    const meta = metadata.value.get(event.question.name)
-    if (meta && !hasDemo(meta)) event.htmlElement.classList.add('outside-demo-field')
     const header = event.htmlElement.querySelector('.sd-question__header')
     if (header && event.question.description) {
       const hint = document.createElement('span')
@@ -631,8 +629,7 @@ function applySuggestion(suggestion: Suggestion) {
       ><img :src="'/onedep/images/wwpdb_logo.png'" :alt="t('wwPDB')" height="34" />
     </header>
     <div class="editor-toolbar">
-      <span class="scope-key"><i />{{ t('黄色：原 demo 之外的内容') }}</span
-      ><span v-if="busy">{{ t('Processing…') }}</span
+      <span v-if="busy">{{ t('Processing…') }}</span
       ><span v-if="saving" role="status">{{ t('Saving…') }}</span>
       <span v-else-if="notice" role="status" class="notice">{{ t(notice) }}</span>
       <span v-if="saveError" role="alert" class="error">{{ saveError }}</span>
@@ -867,7 +864,7 @@ function applySuggestion(suggestion: Suggestion) {
             </details>
           </section>
           <template v-else>
-            <section v-if="tab === 'ligandsummary'" class="outside-demo">
+            <section v-if="tab === 'ligandsummary'">
               <h2>{{ t('Ligands identified in the coordinate file') }}</h2>
               <table>
                 <thead>
