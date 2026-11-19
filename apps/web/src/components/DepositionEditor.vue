@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { AppButton, AppScrollbar, ElProgress, ElTooltip } from '@/components/ui'
+import { AppButton, AppScrollbar, ElDialog, ElProgress, ElTooltip } from '@/components/ui'
 import { t, locale, translations } from '@/locales'
 import { localizeSurvey } from '@/locales/survey'
 import AppFileUpload from './ui/AppFileUpload.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import CommunicationPanel from './CommunicationPanel.vue'
 import Copilot from '@/copilot/Copilot.vue'
+import { httpError } from '@/data/http-error'
 import type { Snapshot, Suggestion } from '@onedep/shared/copilot'
 import { computed, h, render, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
@@ -300,6 +301,25 @@ const remove = (id: number) =>
   })
 const fileOf = (role: string, slot: number) =>
   current.value.files.find((f) => f.kind === role && f.slot === slot)
+const canViewCif = computed(
+  () => import.meta.env.DEV && current.value.files.some((file) => file.kind === 'COORDINATE'),
+)
+const cifPreview = shallowRef<{ name: string; text: string; url: string }>()
+const previewOpen = ref(false)
+const previewLoading = ref(false)
+async function openCifPreview() {
+  previewLoading.value = true
+  try {
+    if (editable.value) await saved()
+    const url = `/api/depositions/${current.value.id}/cif?revision=${current.value.revision}`
+    const response = await fetch(url)
+    if (!response.ok) throw await httpError(response)
+    cifPreview.value = { name: current.value.code + '.cif', text: await response.text(), url }
+    previewOpen.value = true
+  } finally {
+    previewLoading.value = false
+  }
+}
 const checksReady = computed(
   () =>
     !dirty.value &&
@@ -633,6 +653,14 @@ function applySuggestion(suggestion: Suggestion) {
       ><span v-if="saving" role="status">{{ t('Saving…') }}</span>
       <span v-else-if="notice" role="status" class="notice">{{ t(notice) }}</span>
       <span v-if="saveError" role="alert" class="error">{{ saveError }}</span>
+      <AppButton
+        v-if="canViewCif"
+        :loading="previewLoading"
+        :disabled="busy"
+        @click="openCifPreview"
+      >
+        {{ t('View CIF') }}
+      </AppButton>
       <AppButton :disabled="busy || !editable" @click="save">
         {{ t('Save') }}{{ dirty ? ' *' : '' }}</AppButton
       ><AppButton :disabled="busy || !editable" @click="check">{{ t('Run validation') }}</AppButton>
@@ -640,6 +668,24 @@ function applySuggestion(suggestion: Suggestion) {
         ><Download />{{ t('Download submission') }}</a
       >
     </div>
+    <ElDialog
+      v-if="cifPreview"
+      v-model="previewOpen"
+      :title="cifPreview.name"
+      width="min(92vw, 1100px)"
+      append-to-body
+      destroy-on-close
+      @closed="cifPreview = undefined"
+    >
+      <AppScrollbar height="65vh">
+        <pre class="coordinate-preview">{{ cifPreview.text }}</pre>
+      </AppScrollbar>
+      <template #footer>
+        <AppButton tag="a" :href="cifPreview.url" :download="cifPreview.name">
+          <Download />{{ t('Download CIF') }}
+        </AppButton>
+      </template>
+    </ElDialog>
     <div class="editor-layout">
       <AppScrollbar class="editor-sidebar-scroll">
         <aside class="editor-sidebar" :aria-label="t('投递步骤')">
@@ -962,3 +1008,12 @@ function applySuggestion(suggestion: Suggestion) {
     <footer class="editor-footer"><InfoFilled />{{ t('OneDep ·') }}{{ current.code }}</footer>
   </article>
 </template>
+
+<style scoped>
+.coordinate-preview {
+  margin: 0;
+  font:
+    13px/1.5 Consolas,
+    monospace;
+}
+</style>

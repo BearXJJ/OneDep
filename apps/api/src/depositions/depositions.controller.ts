@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -146,6 +147,24 @@ export class DepositionsController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.depositions.check(id, request.authUser, revision);
+  }
+
+  @Get(':id/cif')
+  @Header('Cache-Control', 'no-store')
+  async cif(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('revision', ParseIntPipe) revision: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const file = await this.depositions.draftCif(
+      id,
+      request.authUser,
+      revision,
+    );
+    return new StreamableFile(file.content, {
+      type: 'chemical/x-mmcif',
+      disposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+    });
   }
 
   @Get(':id/export')

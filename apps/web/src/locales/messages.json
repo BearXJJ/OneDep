@@ -12803,6 +12803,14 @@
     "en": "Version",
     "zh": "版本"
   },
+  "Download CIF": {
+    "zh": "下载 CIF",
+    "en": "Download CIF"
+  },
+  "View CIF": {
+    "zh": "查看 CIF",
+    "en": "View CIF"
+  },
   "Version / size": {
     "en": "Version / size",
     "zh": "版本/大小"

@@ -163,7 +163,7 @@ def inspect(request):
         return {'facts':{'width':size[0],'height':size[1]},'issues':[]}
     raise ValueError('Unknown parser: '+parser)
 
-def export(request):
+def write_cif(request):
     doc=gemmi.cif.read(request['basePath']); block=doc.sole_block()
     original={c:block.get_mmcif_category(c,raw=True) for c in block.get_mmcif_category_names()}
     expected={}; answers=request['answers']; origins=request['origins']; touched=set()
@@ -213,16 +213,22 @@ def export(request):
     structure=gemmi.make_structure_from_block(reread)
     atoms=sum(m.count_atom_sites() for m in structure)
     if not atoms:raise ValueError('Export has no coordinates')
+    return {'atoms':atoms,'preservedCategories':len(original)-len(touched),'boundValues':len(expected)}
+
+def export(request):
+    verification=write_cif(request)
     with zipfile.ZipFile(request['zipPath'],'w',compression=zipfile.ZIP_STORED) as archive:
-        archive.write(out,'coordinates.cif')
+        archive.write(request['cifPath'],'coordinates.cif')
         for f in request['attachments']:
             archive.write(f['path'],f"attachments/{f['role']}-{f['slot']}-{Path(f['name']).name}")
         archive.writestr('submission.json',json.dumps(request['snapshot'],ensure_ascii=False,indent=2))
-    return {'atoms':atoms,'preservedCategories':len(original)-len(touched),'boundValues':len(expected),'sha256':hashlib.file_digest(open(request['zipPath'],'rb'),'sha256').hexdigest()}
+    with open(request['zipPath'],'rb') as package:
+        return {**verification,'sha256':hashlib.file_digest(package,'sha256').hexdigest()}
 
 if __name__ == '__main__':
     request=json.load(sys.stdin)
     if request['action']=='inspect': result=inspect(request)
+    elif request['action']=='write_cif': result=write_cif(request)
     elif request['action']=='export': result=export(request)
     else: raise ValueError('Unknown action: '+request['action'])
     print(json.dumps(result,ensure_ascii=False,allow_nan=False))

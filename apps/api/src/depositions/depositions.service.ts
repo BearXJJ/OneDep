@@ -30,8 +30,9 @@ import {
   type ValueOrigin,
 } from '@onedep/shared/deposition';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { extname, resolve } from 'node:path';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { extname, join, resolve } from 'node:path';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { parseCreationOptions } from './deposition-creation.js';
@@ -625,6 +626,42 @@ export class DepositionsService {
     if (content.state === 'running') content.state = 'succeeded';
     return runs;
   }
+  private cifInput(row: Row) {
+    const coordinate = row.files.find(
+      (file) => file.active && file.kind === 'COORDINATE',
+    );
+    if (!coordinate) throw new BadRequestException('请先上传坐标文件。');
+    const profile = this.profile(row);
+    return {
+      basePath: resolve(this.uploadDir, coordinate.storedName + '.base.cif'),
+      bindings: getCifBindings(profile),
+      answers: activeAnswers(profile, row.answers as Answers),
+      origins: row.origins,
+    };
+  }
+
+  async draftCif(id: number, user: AuthUser, revision: number) {
+    const row = await this.owned(id, user);
+    this.revision(row, revision);
+    const name = row.code + '.cif';
+    const snapshot = row.snapshots[0];
+    if (snapshot) {
+      const content = await readFile(
+        resolve(this.uploadDir, snapshot.id + '.cif'),
+      );
+      return { content, name };
+    }
+    const input = this.cifInput(row);
+    const directory = await mkdtemp(join(tmpdir(), 'onedep-cif-'));
+    const cifPath = join(directory, 'coordinates.cif');
+    try {
+      await runGemmi({ action: 'write_cif', cifPath, ...input }, this.gemmi);
+      return { content: await readFile(cifPath), name };
+    } finally {
+      await rm(directory, { recursive: true });
+    }
+  }
+
   async submit(id: number, user: AuthUser, revision: number) {
     const row = await this.owned(id, user, true);
     this.revision(row, revision);
@@ -647,8 +684,7 @@ export class DepositionsService {
     const exportName = snapshotId + '.zip';
     const cifName = snapshotId + '.cif';
     const files = row.files.filter((f) => f.active);
-    const coordinate = files.find((f) => f.kind === 'COORDINATE')!;
-    const active = activeAnswers(profile, row.answers as Answers);
+    const cif = this.cifInput(row);
     const snapshot = {
       id: snapshotId,
       draftRevision: row.revision,
@@ -658,7 +694,7 @@ export class DepositionsService {
         definitionRevision: getProfileDefinition(profile).revision,
         revision: row.revision,
         status: 'SUBMITTED',
-        answers: active,
+        answers: cif.answers,
         files: files.map((f) => this.file(f)),
         origins: row.origins,
       },
@@ -675,12 +711,9 @@ export class DepositionsService {
     result = await runGemmi(
       {
         action: 'export',
-        basePath: resolve(this.uploadDir, coordinate.storedName + '.base.cif'),
+        ...cif,
         cifPath: resolve(this.uploadDir, cifName),
         zipPath: resolve(this.uploadDir, exportName),
-        answers: active,
-        origins: row.origins,
-        bindings: getCifBindings(profile),
         snapshot,
         attachments: files
           .filter((f) => f.kind !== 'COORDINATE')
